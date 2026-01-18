@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  barber
+}
+
+enum AppointmentRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+  done
+}
+
+enum AppointmentSlotStatus {
+  blocked
+  free
+}
+
+enum ExpenseCategory {
+  rent
+  electricity
+  water
+  product
+  staff
+  other
+}
+
+enum SubscriptionRecurrenceType {
+  weekly
+  biweekly
+  monthly
+}
+
+enum RecurringExpenseRepeatType {
+  daily
+  weekly
+  monthly
+}
+
+enum ExpenseSourceType {
+  manual
+  recurring
+}
+
+enum AuditActorType {
+  customer
+  admin
+  system
+}
+
+enum AuditEntityType {
+  appointment
+  ledger
+  expense
+  sms
+  auth
+  ui
+  settings
+  other
+}
+
+enum AuditAction {
+  UI_PHONE_ENTERED
+  UI_NAME_ENTERED
+  UI_CANCEL_ATTEMPT
+  UI_FORM_ABANDONED
+  UI_SETTINGS_SAVED
+
+  APPOINTMENT_CREATE_ATTEMPT
+  APPOINTMENT_CREATED
+  APPOINTMENT_APPROVED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_CANCEL_ATTEMPT
+  APPOINTMENT_CANCEL_BLOCKED_PAST
+  APPOINTMENT_CANCEL_DENIED
+
+  CUSTOMER_CANCEL_PHONE_ENTERED
+  CUSTOMER_CANCEL_OTP_SENT
+  CUSTOMER_CANCEL_CONFIRMED
+  CUSTOMER_CANCEL_FAILED
+
+  SETTINGS_CREATED
+  SETTINGS_UPDATED
+
+  LEDGER_CREATED
+  LEDGER_UPDATED
+  LEDGER_DELETED
+
+  EXPENSE_CREATED
+  EXPENSE_UPDATED
+  EXPENSE_DELETED
+
+  SMS_SENT
+  SMS_FAILED
+
+  WORKING_HOUR_UPDATED
+  WORKING_HOUR_OVERRIDE_CREATED
+  WORKING_HOUR_OVERRIDE_DELETED
+  WORKING_HOUR_OVERRIDE_APPLIED
+  APPOINTMENT_CANCELLED_BY_OVERRIDE
+
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_APPOINTMENTS_GENERATED
+  SUBSCRIPTION_APPOINTMENT_CANCELLED
+  SUBSCRIPTION_CANCEL_BLOCKED
+
+  ADMIN_APPOINTMENT_CREATED
+  APPOINTMENT_MARKED_DONE
+
+  RECURRING_EXPENSE_CREATED
+  RECURRING_EXPENSE_RUN
+  RECURRING_EXPENSE_DISABLED
+}
+
+model Barber {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  password     String   @db.VarChar(255)
+  role         Role     @default(barber)
+  experience   Int      @default(0)
+  rating       Decimal  @default(5.00) @db.Decimal(3, 2)
+  specialties  String?  @db.Text
+  image        String?  @db.VarChar(500)
+  slotDuration Int      @default(30)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.DateTime(0)
+  updatedAt    DateTime @updatedAt @db.DateTime(0)
+
+  workingHours         WorkingHour[]
+  workingHourOverrides WorkingHourOverride[]
+  appointmentRequests  AppointmentRequest[]
+  appointmentSlots     AppointmentSlot[]
+  ledgerEntries        LedgerEntry[]
+  subscriptions        Subscription[]
+  waitlistRequests     AppointmentWaitlist[]
+
+  @@index([email])
+  @@map("barbers")
+}
+
+model WorkingHour {
+  id        String   @id @default(cuid())
+  barberId  String
+  dayOfWeek Int
+  startTime String   @db.VarChar(10)
+  endTime   String   @db.VarChar(10)
+  isWorking Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  updatedAt DateTime @updatedAt @db.DateTime(0)
+
+  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([barberId, dayOfWeek])
+  @@index([barberId])
+  @@map("working_hours")
+}
+
+model WorkingHourOverride {
+  id        String   @id @default(cuid())
+  barberId  String
+  date      String   @db.VarChar(191)
+  startTime String   @db.VarChar(10)
+  endTime   String   @db.VarChar(10)
+  reason    String?  @db.Text
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, date])
+  @@map("working_hour_overrides")
+}
+
+model AppointmentRequest {
+  id                 String                   @id @default(cuid())
+  barberId           String
+  customerName       String                   @db.VarChar(255)
+  customerPhone      String                   @db.VarChar(20)
+  customerEmail      String?                  @db.VarChar(255)
+  date               String                   @db.VarChar(191)
+  requestedStartTime String                   @db.VarChar(191)
+  requestedEndTime   String?                  @db.VarChar(191)
+  serviceType        String?                  @db.VarChar(50)
+  status             AppointmentRequestStatus @default(pending)
+  cancelledBy        String?                  @db.VarChar(20)
+  subscriptionId     String?
+  createdAt          DateTime                 @default(now()) @db.DateTime(0)
+
+  barber           Barber            @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  appointmentSlots AppointmentSlot[]
+  ledgerEntry      LedgerEntry?
+  subscription     Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([barberId, date])
+  @@index([status])
+  @@index([subscriptionId])
+  @@map("appointment_requests")
+}
+
+model AppointmentSlot {
+  id                   String                @id @default(cuid())
+  barberId             String
+  appointmentRequestId String?               @db.VarChar(191)
+  date                 String                @db.VarChar(191)
+  startTime            String                @db.VarChar(191)
+  endTime              String                @db.VarChar(191)
+  status               AppointmentSlotStatus @default(blocked)
+  createdAt            DateTime              @default(now()) @db.DateTime(0)
+
+  barber             Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  appointmentRequest AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id], onDelete: SetNull)
+
+  @@index([barberId, date])
+  @@index([barberId, date, status])
+  @@index([status])
+  @@map("appointment_slots")
+}
+
+model LedgerEntry {
+  id                   String   @id @default(cuid())
+  barberId             String
+  appointmentRequestId String?  @unique
+  date                 String   @db.VarChar(191)
+  customerName         String   @db.VarChar(255)
+  description          String?  @db.Text
+  amount               Decimal  @db.Decimal(10, 2)
+  createdAt            DateTime @default(now()) @db.DateTime(0)
+
+  barber             Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  appointmentRequest AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id], onDelete: SetNull)
+
+  @@index([barberId, date])
+  @@map("ledger_entries")
+}
+
+model Expense {
+  id          String           @id @default(cuid())
+  date        String           @db.VarChar(191)
+  amount      Decimal          @db.Decimal(10, 2)
+  category    ExpenseCategory
+  description String?          @db.Text
+  sourceType  ExpenseSourceType @default(manual)
+  sourceId    String?          @db.VarChar(191)
+  createdAt   DateTime         @default(now()) @db.DateTime(0)
+
+  @@index([date])
+  @@map("expenses")
+}
+
+model RecurringExpense {
+  id            String                     @id @default(cuid())
+  title         String                     @db.VarChar(255)
+  amount        Decimal                    @db.Decimal(10, 2)
+  category      ExpenseCategory
+  repeatType    RecurringExpenseRepeatType
+  repeatInterval Int                       @default(1)
+  startDate     String                     @db.VarChar(191)
+  nextRunAt     DateTime                   @db.DateTime(0)
+  endDate       String?                    @db.VarChar(191)
+  isActive      Boolean                    @default(true)
+  createdAt     DateTime                   @default(now()) @db.DateTime(0)
+  updatedAt     DateTime                   @updatedAt @db.DateTime(0)
+
+  @@index([isActive, nextRunAt])
+  @@map("recurring_expenses")
+}
+
+model SmsLog {
+  id        String   @id @default(cuid())
+  to        String   @db.VarChar(50)
+  message   String   @db.Text
+  event     String   @db.VarChar(100)
+  eventLabel String? @db.VarChar(255)
+  provider  String   @db.VarChar(50)
+  status    String   @db.VarChar(20)
+  error     String?  @db.Text
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  @@index([event])
+  @@index([createdAt])
+  @@map("sms_logs")
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  actorType  AuditActorType
+  actorId    String?
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String?
+  summary    String          @db.Text
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @db.DateTime(0)
+
+  @@index([actorType])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model CustomerCancelOtp {
+  id            String   @id @default(cuid())
+  phone         String   @db.VarChar(20)
+  code          String   @db.VarChar(10)
+  appointmentId String?
+  expiresAt     DateTime @db.DateTime(0)
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+
+  @@index([phone])
+  @@index([appointmentId])
+  @@index([expiresAt])
+  @@map("customer_cancel_otps")
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @db.DateTime(0)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  @@map("app_settings")
+}
+
+model Subscription {
+  id            String @id @default(cuid())
+  barberId      String
+  customerName  String @db.VarChar(255)
+  customerPhone String @db.VarChar(20)
+
+  recurrenceType SubscriptionRecurrenceType
+  dayOfWeek      Int
+  weekOfMonth    Int?
+
+  startTime       String @db.VarChar(10)
+  durationMinutes Int
+
+  startDate String  @db.VarChar(191)
+  endDate   String? @db.VarChar(191)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  updatedAt DateTime @updatedAt @db.DateTime(0)
+
+  barber              Barber               @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  appointmentRequests AppointmentRequest[]
+
+  @@index([barberId])
+  @@index([customerPhone])
+  @@index([isActive])
+  @@map("subscriptions")
+}
+
+model SystemJobLog {
+  id      String   @id @default(cuid())
+  jobName String   @db.VarChar(100)
+  ranAt   DateTime @default(now()) @db.DateTime(0)
+  meta    Json?
+
+  @@index([jobName])
+  @@index([ranAt])
+  @@map("system_job_logs")
+}
+
+model BannedCustomer {
+  id            String   @id @default(cuid())
+  customerPhone String   @unique @db.VarChar(20)
+  customerName  String   @db.VarChar(255)
+  reason        String?  @db.Text
+  banType       String   @db.VarChar(20)
+  bannedAt      DateTime @default(now()) @db.DateTime(0)
+  bannedUntil   DateTime? @db.DateTime(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+  updatedAt     DateTime @updatedAt @db.DateTime(0)
+
+  @@index([customerPhone])
+  @@index([isActive])
+  @@map("banned_customers")
+}
+
+model AppointmentWaitlist {
+  id            String   @id @default(cuid())
+  customerPhone String   @db.VarChar(20)
+  customerName  String   @db.VarChar(255)
+  barberId      String
+  preferredDate String   @db.VarChar(191)
+  timeRangeType String   @db.VarChar(20)
+  status        String   @default("active") @db.VarChar(20)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+  notifiedAt    DateTime? @db.DateTime(0)
+  
+  barber        Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  
+  @@unique([customerPhone, barberId, preferredDate])
+  @@index([barberId, preferredDate, status])
+  @@map("appointment_waitlist")
+}
