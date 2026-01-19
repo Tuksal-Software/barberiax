@@ -7,6 +7,356 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id           String       @id @default(cuid())
+  name         String       @db.VarChar(255)
+  slug         String       @unique @db.VarChar(100)
+  customDomain String?      @unique @db.VarChar(255)
+  status       TenantStatus @default(active)
+  createdAt    DateTime     @default(now()) @db.DateTime(0)
+  updatedAt    DateTime     @default(now()) @updatedAt @db.DateTime(0)
+  users        User[]
+
+  @@map("tenants")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  tenantId      String
+  username      String    @unique @db.VarChar(50)
+  email         String?   @unique @db.VarChar(255)
+  name          String?   @db.VarChar(255)
+  emailVerified DateTime? @db.DateTime(0)
+  image         String?   @db.VarChar(500)
+  password      String?   @db.VarChar(255)
+  role          UserRole  @default(tenant_owner)
+  createdAt     DateTime  @default(now()) @db.DateTime(0)
+  updatedAt     DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  accounts      Account[]
+  sessions      Session[]
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([username])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String  @db.VarChar(50)
+  provider          String  @db.VarChar(100)
+  providerAccountId String  @db.VarChar(255)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String? @db.VarChar(50)
+  scope             String? @db.VarChar(500)
+  id_token          String? @db.Text
+  session_state     String? @db.VarChar(255)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @db.VarChar(255)
+  userId       String
+  expires      DateTime @db.DateTime(0)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String   @db.VarChar(255)
+  token      String   @unique @db.VarChar(255)
+  expires    DateTime @db.DateTime(0)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Barber {
+  id                   String                @id @default(cuid())
+  name                 String                @db.VarChar(255)
+  email                String                @unique @db.VarChar(255)
+  password             String                @db.VarChar(255)
+  role                 Role                  @default(barber)
+  experience           Int                   @default(0)
+  rating               Decimal               @default(5.00) @db.Decimal(3, 2)
+  specialties          String?               @db.Text
+  image                String?               @db.VarChar(500)
+  slotDuration         Int                   @default(30)
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now()) @db.DateTime(0)
+  updatedAt            DateTime              @updatedAt @db.DateTime(0)
+  appointmentRequests  AppointmentRequest[]
+  appointmentSlots     AppointmentSlot[]
+  waitlistRequests     AppointmentWaitlist[]
+  ledgerEntries        LedgerEntry[]
+  subscriptions        Subscription[]
+  workingHourOverrides WorkingHourOverride[]
+  workingHours         WorkingHour[]
+
+  @@index([email])
+  @@map("barbers")
+}
+
+model WorkingHour {
+  id        String   @id @default(cuid())
+  barberId  String
+  dayOfWeek Int
+  startTime String   @db.VarChar(10)
+  endTime   String   @db.VarChar(10)
+  isWorking Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  updatedAt DateTime @updatedAt @db.DateTime(0)
+  barber    Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([barberId, dayOfWeek])
+  @@index([barberId])
+  @@map("working_hours")
+}
+
+model WorkingHourOverride {
+  id        String   @id @default(cuid())
+  barberId  String
+  date      String
+  startTime String   @db.VarChar(10)
+  endTime   String   @db.VarChar(10)
+  reason    String?  @db.Text
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  barber    Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, date])
+  @@map("working_hour_overrides")
+}
+
+model AppointmentRequest {
+  id                 String                   @id @default(cuid())
+  barberId           String
+  customerName       String                   @db.VarChar(255)
+  customerPhone      String                   @db.VarChar(20)
+  customerEmail      String?                  @db.VarChar(255)
+  date               String
+  requestedStartTime String
+  requestedEndTime   String?
+  serviceType        String?                  @db.VarChar(50)
+  status             AppointmentRequestStatus @default(pending)
+  createdAt          DateTime                 @default(now()) @db.DateTime(0)
+  cancelledBy        String?                  @db.VarChar(20)
+  subscriptionId     String?
+  barber             Barber                   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  subscription       Subscription?            @relation(fields: [subscriptionId], references: [id])
+  appointmentSlots   AppointmentSlot[]
+  ledgerEntry        LedgerEntry?
+
+  @@index([barberId, date])
+  @@index([status])
+  @@index([subscriptionId])
+  @@map("appointment_requests")
+}
+
+model AppointmentSlot {
+  id                   String                @id @default(cuid())
+  barberId             String
+  appointmentRequestId String?
+  date                 String
+  startTime            String
+  endTime              String
+  status               AppointmentSlotStatus @default(blocked)
+  createdAt            DateTime              @default(now()) @db.DateTime(0)
+  appointmentRequest   AppointmentRequest?   @relation(fields: [appointmentRequestId], references: [id])
+  barber               Barber                @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, date])
+  @@index([barberId, date, status])
+  @@index([status])
+  @@index([appointmentRequestId], map: "appointment_slots_appointmentRequestId_fkey")
+  @@map("appointment_slots")
+}
+
+model LedgerEntry {
+  id                   String              @id @default(cuid())
+  barberId             String
+  appointmentRequestId String?             @unique
+  date                 String
+  customerName         String              @db.VarChar(255)
+  description          String?             @db.Text
+  amount               Decimal             @db.Decimal(10, 2)
+  createdAt            DateTime            @default(now()) @db.DateTime(0)
+  appointmentRequest   AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id])
+  barber               Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, date])
+  @@map("ledger_entries")
+}
+
+model Expense {
+  id          String            @id @default(cuid())
+  date        String
+  amount      Decimal           @db.Decimal(10, 2)
+  category    ExpenseCategory
+  description String?           @db.Text
+  createdAt   DateTime          @default(now()) @db.DateTime(0)
+  sourceType  ExpenseSourceType @default(manual)
+  sourceId    String?
+
+  @@index([date])
+  @@map("expenses")
+}
+
+model RecurringExpense {
+  id             String                     @id @default(cuid())
+  title          String                     @db.VarChar(255)
+  amount         Decimal                    @db.Decimal(10, 2)
+  category       ExpenseCategory
+  repeatType     RecurringExpenseRepeatType
+  repeatInterval Int                        @default(1)
+  startDate      String
+  nextRunAt      DateTime                   @db.DateTime(0)
+  endDate        String?
+  isActive       Boolean                    @default(true)
+  createdAt      DateTime                   @default(now()) @db.DateTime(0)
+  updatedAt      DateTime                   @updatedAt @db.DateTime(0)
+
+  @@index([isActive, nextRunAt])
+  @@map("recurring_expenses")
+}
+
+model SmsLog {
+  id         String   @id @default(cuid())
+  to         String   @db.VarChar(50)
+  message    String   @db.Text
+  event      String   @db.VarChar(100)
+  provider   String   @db.VarChar(50)
+  status     String   @db.VarChar(20)
+  error      String?  @db.Text
+  createdAt  DateTime @default(now()) @db.DateTime(0)
+  eventLabel String?  @db.VarChar(255)
+
+  @@index([event])
+  @@index([createdAt])
+  @@map("sms_logs")
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  actorType  AuditActorType
+  actorId    String?
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String?
+  summary    String          @db.Text
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @db.DateTime(0)
+
+  @@index([actorType])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model CustomerCancelOtp {
+  id            String   @id @default(cuid())
+  phone         String   @db.VarChar(20)
+  code          String   @db.VarChar(10)
+  appointmentId String?  @db.VarChar(30)
+  expiresAt     DateTime @db.DateTime(0)
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+
+  @@index([phone])
+  @@index([appointmentId])
+  @@index([expiresAt])
+  @@map("customer_cancel_otps")
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @db.DateTime(0)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  @@map("app_settings")
+}
+
+model Subscription {
+  id                  String                     @id @default(cuid())
+  barberId            String
+  customerName        String                     @db.VarChar(255)
+  customerPhone       String                     @db.VarChar(20)
+  recurrenceType      SubscriptionRecurrenceType
+  dayOfWeek           Int
+  weekOfMonth         Int?
+  startTime           String                     @db.VarChar(10)
+  durationMinutes     Int
+  startDate           String
+  endDate             String?
+  isActive            Boolean                    @default(true)
+  createdAt           DateTime                   @default(now()) @db.DateTime(0)
+  updatedAt           DateTime                   @updatedAt @db.DateTime(0)
+  appointmentRequests AppointmentRequest[]
+  barber              Barber                     @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@index([customerPhone])
+  @@index([isActive])
+  @@map("subscriptions")
+}
+
+model SystemJobLog {
+  id      String   @id @default(cuid())
+  jobName String   @db.VarChar(100)
+  ranAt   DateTime @default(now()) @db.DateTime(0)
+  meta    Json?
+
+  @@index([jobName])
+  @@index([ranAt])
+  @@map("system_job_logs")
+}
+
+model BannedCustomer {
+  id            String    @id @default(cuid())
+  customerPhone String    @unique @db.VarChar(20)
+  customerName  String    @db.VarChar(255)
+  reason        String?   @db.Text
+  banType       String    @db.VarChar(20)
+  bannedAt      DateTime  @default(now()) @db.DateTime(0)
+  bannedUntil   DateTime? @db.DateTime(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @db.DateTime(0)
+  updatedAt     DateTime  @updatedAt @db.DateTime(0)
+
+  @@index([customerPhone])
+  @@index([isActive])
+  @@map("banned_customers")
+}
+
+model AppointmentWaitlist {
+  id            String    @id @default(cuid()) @db.VarChar(30)
+  customerPhone String    @db.VarChar(20)
+  customerName  String    @db.VarChar(255)
+  barberId      String    @db.VarChar(30)
+  preferredDate String    @db.VarChar(10)
+  timeRangeType String    @db.VarChar(20)
+  status        String    @default("active") @db.VarChar(20)
+  createdAt     DateTime  @default(now())
+  notifiedAt    DateTime?
+  barber        Barber    @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([customerPhone, barberId, preferredDate])
+  @@index([barberId, preferredDate, status])
+  @@index([barberId])
+  @@map("appointment_waitlist")
+}
+
 enum Role {
   admin
   barber
@@ -74,7 +424,6 @@ enum AuditAction {
   UI_CANCEL_ATTEMPT
   UI_FORM_ABANDONED
   UI_SETTINGS_SAVED
-
   APPOINTMENT_CREATE_ATTEMPT
   APPOINTMENT_CREATED
   APPOINTMENT_APPROVED
@@ -82,329 +431,45 @@ enum AuditAction {
   APPOINTMENT_CANCEL_ATTEMPT
   APPOINTMENT_CANCEL_BLOCKED_PAST
   APPOINTMENT_CANCEL_DENIED
-
   CUSTOMER_CANCEL_PHONE_ENTERED
   CUSTOMER_CANCEL_OTP_SENT
   CUSTOMER_CANCEL_CONFIRMED
   CUSTOMER_CANCEL_FAILED
-
   SETTINGS_CREATED
   SETTINGS_UPDATED
-
   LEDGER_CREATED
   LEDGER_UPDATED
   LEDGER_DELETED
-
   EXPENSE_CREATED
   EXPENSE_UPDATED
   EXPENSE_DELETED
-
   SMS_SENT
   SMS_FAILED
-
   WORKING_HOUR_UPDATED
   WORKING_HOUR_OVERRIDE_CREATED
   WORKING_HOUR_OVERRIDE_DELETED
   WORKING_HOUR_OVERRIDE_APPLIED
   APPOINTMENT_CANCELLED_BY_OVERRIDE
-
   SUBSCRIPTION_CREATED
   SUBSCRIPTION_UPDATED
   SUBSCRIPTION_CANCELLED
   SUBSCRIPTION_APPOINTMENTS_GENERATED
   SUBSCRIPTION_APPOINTMENT_CANCELLED
   SUBSCRIPTION_CANCEL_BLOCKED
-
   ADMIN_APPOINTMENT_CREATED
   APPOINTMENT_MARKED_DONE
-
   RECURRING_EXPENSE_CREATED
   RECURRING_EXPENSE_RUN
   RECURRING_EXPENSE_DISABLED
 }
 
-model Barber {
-  id           String   @id @default(cuid())
-  name         String   @db.VarChar(255)
-  email        String   @unique @db.VarChar(255)
-  password     String   @db.VarChar(255)
-  role         Role     @default(barber)
-  experience   Int      @default(0)
-  rating       Decimal  @default(5.00) @db.Decimal(3, 2)
-  specialties  String?  @db.Text
-  image        String?  @db.VarChar(500)
-  slotDuration Int      @default(30)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now()) @db.DateTime(0)
-  updatedAt    DateTime @updatedAt @db.DateTime(0)
-
-  workingHours         WorkingHour[]
-  workingHourOverrides WorkingHourOverride[]
-  appointmentRequests  AppointmentRequest[]
-  appointmentSlots     AppointmentSlot[]
-  ledgerEntries        LedgerEntry[]
-  subscriptions        Subscription[]
-  waitlistRequests     AppointmentWaitlist[]
-
-  @@index([email])
-  @@map("barbers")
+enum TenantStatus {
+  active
+  suspended
+  cancelled
 }
 
-model WorkingHour {
-  id        String   @id @default(cuid())
-  barberId  String
-  dayOfWeek Int
-  startTime String   @db.VarChar(10)
-  endTime   String   @db.VarChar(10)
-  isWorking Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.DateTime(0)
-  updatedAt DateTime @updatedAt @db.DateTime(0)
-
-  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
-
-  @@unique([barberId, dayOfWeek])
-  @@index([barberId])
-  @@map("working_hours")
-}
-
-model WorkingHourOverride {
-  id        String   @id @default(cuid())
-  barberId  String
-  date      String   @db.VarChar(191)
-  startTime String   @db.VarChar(10)
-  endTime   String   @db.VarChar(10)
-  reason    String?  @db.Text
-  createdAt DateTime @default(now()) @db.DateTime(0)
-
-  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
-
-  @@index([barberId, date])
-  @@map("working_hour_overrides")
-}
-
-model AppointmentRequest {
-  id                 String                   @id @default(cuid())
-  barberId           String
-  customerName       String                   @db.VarChar(255)
-  customerPhone      String                   @db.VarChar(20)
-  customerEmail      String?                  @db.VarChar(255)
-  date               String                   @db.VarChar(191)
-  requestedStartTime String                   @db.VarChar(191)
-  requestedEndTime   String?                  @db.VarChar(191)
-  serviceType        String?                  @db.VarChar(50)
-  status             AppointmentRequestStatus @default(pending)
-  cancelledBy        String?                  @db.VarChar(20)
-  subscriptionId     String?
-  createdAt          DateTime                 @default(now()) @db.DateTime(0)
-
-  barber           Barber            @relation(fields: [barberId], references: [id], onDelete: Cascade)
-  appointmentSlots AppointmentSlot[]
-  ledgerEntry      LedgerEntry?
-  subscription     Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-
-  @@index([barberId, date])
-  @@index([status])
-  @@index([subscriptionId])
-  @@map("appointment_requests")
-}
-
-model AppointmentSlot {
-  id                   String                @id @default(cuid())
-  barberId             String
-  appointmentRequestId String?               @db.VarChar(191)
-  date                 String                @db.VarChar(191)
-  startTime            String                @db.VarChar(191)
-  endTime              String                @db.VarChar(191)
-  status               AppointmentSlotStatus @default(blocked)
-  createdAt            DateTime              @default(now()) @db.DateTime(0)
-
-  barber             Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
-  appointmentRequest AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id], onDelete: SetNull)
-
-  @@index([barberId, date])
-  @@index([barberId, date, status])
-  @@index([status])
-  @@map("appointment_slots")
-}
-
-model LedgerEntry {
-  id                   String   @id @default(cuid())
-  barberId             String
-  appointmentRequestId String?  @unique
-  date                 String   @db.VarChar(191)
-  customerName         String   @db.VarChar(255)
-  description          String?  @db.Text
-  amount               Decimal  @db.Decimal(10, 2)
-  createdAt            DateTime @default(now()) @db.DateTime(0)
-
-  barber             Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
-  appointmentRequest AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id], onDelete: SetNull)
-
-  @@index([barberId, date])
-  @@map("ledger_entries")
-}
-
-model Expense {
-  id          String           @id @default(cuid())
-  date        String           @db.VarChar(191)
-  amount      Decimal          @db.Decimal(10, 2)
-  category    ExpenseCategory
-  description String?          @db.Text
-  sourceType  ExpenseSourceType @default(manual)
-  sourceId    String?          @db.VarChar(191)
-  createdAt   DateTime         @default(now()) @db.DateTime(0)
-
-  @@index([date])
-  @@map("expenses")
-}
-
-model RecurringExpense {
-  id            String                     @id @default(cuid())
-  title         String                     @db.VarChar(255)
-  amount        Decimal                    @db.Decimal(10, 2)
-  category      ExpenseCategory
-  repeatType    RecurringExpenseRepeatType
-  repeatInterval Int                       @default(1)
-  startDate     String                     @db.VarChar(191)
-  nextRunAt     DateTime                   @db.DateTime(0)
-  endDate       String?                    @db.VarChar(191)
-  isActive      Boolean                    @default(true)
-  createdAt     DateTime                   @default(now()) @db.DateTime(0)
-  updatedAt     DateTime                   @updatedAt @db.DateTime(0)
-
-  @@index([isActive, nextRunAt])
-  @@map("recurring_expenses")
-}
-
-model SmsLog {
-  id        String   @id @default(cuid())
-  to        String   @db.VarChar(50)
-  message   String   @db.Text
-  event     String   @db.VarChar(100)
-  eventLabel String? @db.VarChar(255)
-  provider  String   @db.VarChar(50)
-  status    String   @db.VarChar(20)
-  error     String?  @db.Text
-  createdAt DateTime @default(now()) @db.DateTime(0)
-
-  @@index([event])
-  @@index([createdAt])
-  @@map("sms_logs")
-}
-
-model AuditLog {
-  id         String          @id @default(cuid())
-  actorType  AuditActorType
-  actorId    String?
-  action     AuditAction
-  entityType AuditEntityType
-  entityId   String?
-  summary    String          @db.Text
-  metadata   Json?
-  createdAt  DateTime        @default(now()) @db.DateTime(0)
-
-  @@index([actorType])
-  @@index([action])
-  @@index([entityType])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-model CustomerCancelOtp {
-  id            String   @id @default(cuid())
-  phone         String   @db.VarChar(20)
-  code          String   @db.VarChar(10)
-  appointmentId String?
-  expiresAt     DateTime @db.DateTime(0)
-  used          Boolean  @default(false)
-  createdAt     DateTime @default(now()) @db.DateTime(0)
-
-  @@index([phone])
-  @@index([appointmentId])
-  @@index([expiresAt])
-  @@map("customer_cancel_otps")
-}
-
-model AppSetting {
-  key       String   @id @db.VarChar(64)
-  value     Json
-  updatedAt DateTime @updatedAt @db.DateTime(0)
-  createdAt DateTime @default(now()) @db.DateTime(0)
-
-  @@map("app_settings")
-}
-
-model Subscription {
-  id            String @id @default(cuid())
-  barberId      String
-  customerName  String @db.VarChar(255)
-  customerPhone String @db.VarChar(20)
-
-  recurrenceType SubscriptionRecurrenceType
-  dayOfWeek      Int
-  weekOfMonth    Int?
-
-  startTime       String @db.VarChar(10)
-  durationMinutes Int
-
-  startDate String  @db.VarChar(191)
-  endDate   String? @db.VarChar(191)
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.DateTime(0)
-  updatedAt DateTime @updatedAt @db.DateTime(0)
-
-  barber              Barber               @relation(fields: [barberId], references: [id], onDelete: Cascade)
-  appointmentRequests AppointmentRequest[]
-
-  @@index([barberId])
-  @@index([customerPhone])
-  @@index([isActive])
-  @@map("subscriptions")
-}
-
-model SystemJobLog {
-  id      String   @id @default(cuid())
-  jobName String   @db.VarChar(100)
-  ranAt   DateTime @default(now()) @db.DateTime(0)
-  meta    Json?
-
-  @@index([jobName])
-  @@index([ranAt])
-  @@map("system_job_logs")
-}
-
-model BannedCustomer {
-  id            String   @id @default(cuid())
-  customerPhone String   @unique @db.VarChar(20)
-  customerName  String   @db.VarChar(255)
-  reason        String?  @db.Text
-  banType       String   @db.VarChar(20)
-  bannedAt      DateTime @default(now()) @db.DateTime(0)
-  bannedUntil   DateTime? @db.DateTime(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now()) @db.DateTime(0)
-  updatedAt     DateTime @updatedAt @db.DateTime(0)
-
-  @@index([customerPhone])
-  @@index([isActive])
-  @@map("banned_customers")
-}
-
-model AppointmentWaitlist {
-  id            String   @id @default(cuid())
-  customerPhone String   @db.VarChar(20)
-  customerName  String   @db.VarChar(255)
-  barberId      String
-  preferredDate String   @db.VarChar(191)
-  timeRangeType String   @db.VarChar(20)
-  status        String   @default("active") @db.VarChar(20)
-  createdAt     DateTime @default(now()) @db.DateTime(0)
-  notifiedAt    DateTime? @db.DateTime(0)
-  
-  barber        Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
-  
-  @@unique([customerPhone, barberId, preferredDate])
-  @@index([barberId, preferredDate, status])
-  @@map("appointment_waitlist")
+enum UserRole {
+  super_admin
+  tenant_owner
 }

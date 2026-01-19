@@ -14,11 +14,12 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
-    "send:appointment-reminders": "tsx src/scripts/sendAppointmentReminders.ts",
-    "mark:appointments-done": "tsx src/scripts/markPastAppointmentsDone.ts",
-    "run:recurring-expenses": "tsx src/scripts/runRecurringExpenses.ts"
+    "send:appointment-reminders": "tsx scripts/sendAppointmentReminders.ts",
+    "mark:appointments-done": "tsx scripts/markPastAppointmentsDone.ts",
+    "run:recurring-expenses": "tsx scripts/runRecurringExpenses.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
@@ -54,6 +55,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.468.0",
     "next": "15.5.9",
+    "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "postcss": "^8",
     "react": "19.2.3",
