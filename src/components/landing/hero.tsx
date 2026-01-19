@@ -8,7 +8,7 @@ import { ArrowRight, Play } from "lucide-react"
 export default function Hero() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      <div className="container max-w-7xl mx-auto px-4 py-20 md:py-28">
+      <div className="container max-w-7xl mx-auto px-4 py-10 md:py-14">
         <div className="grid lg:grid-cols-5 gap-12 items-center">
           {/* Sol taraf - Text & CTA */}
           <div className="lg:col-span-2 space-y-8">

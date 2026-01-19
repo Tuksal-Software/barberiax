@@ -1,33 +1,32 @@
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import Logo from "@/components/navbar-components/logo";
+import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from "@/components/ui/navigation-menu"
+} from "@/components/ui/navigation-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 
+// Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { active: true, href: "/", label: "Ana Sayfa" },
-  { href: "#ozellikler", label: "Özellikler" },
-  { href: "#nasil-calisir", label: "Nasıl Çalışır" },
-  { href: "#fiyatlandirma", label: "Fiyatlandırma" },
-  { href: "#iletisim", label: "İletişim" },
-]
+  { active: true, href: "#", label: "Home" },
+  { href: "#", label: "Features" },
+  { href: "#", label: "Pricing" },
+  { href: "#", label: "About" },
+];
 
-export default function Navbar() {
+export default function Component() {
   return (
-    <header className="border-b px-4 md:px-6 bg-white sticky top-0 z-50">
+    <header className="border-b px-4 md:px-6">
       <div className="flex h-16 items-center justify-between gap-4">
-        {/* Sol taraf */}
+        {/* Left side */}
         <div className="flex items-center gap-2">
-          {/* Mobile hamburger menü */}
+          {/* Mobile menu trigger */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -62,14 +61,14 @@ export default function Navbar() {
                 </svg>
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-48 p-1 md:hidden">
+            <PopoverContent align="start" className="w-36 p-1 md:hidden">
               <NavigationMenu className="max-w-none *:w-full">
-                <NavigationMenuList className="flex-col items-start gap-0">
-                  {navigationLinks.map((link) => (
+                <NavigationMenuList className="flex-col items-start gap-0 md:gap-2">
+                  {navigationLinks.map((link, _index) => (
                     <NavigationMenuItem className="w-full" key={link.label}>
                       <NavigationMenuLink
                         active={link.active}
-                        className="py-2 px-3 w-full"
+                        className="py-1.5"
                         href={link.href}
                       >
                         {link.label}
@@ -80,22 +79,19 @@ export default function Navbar() {
               </NavigationMenu>
             </PopoverContent>
           </Popover>
-
-          {/* Logo ve Desktop Navigation */}
+          {/* Main nav */}
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <Image src="/logo.png" alt="Barberiax" width={32} height={32} />
-              <span className="font-bold text-slate-900">Barberiax</span>
-            </Link>
-
-            {/* Desktop Navigation Menu */}
+            <a className="text-primary hover:text-primary/90" href="#">
+              <Logo />
+            </a>
+            {/* Navigation menu */}
             <NavigationMenu className="max-md:hidden">
               <NavigationMenuList className="gap-2">
-                {navigationLinks.map((link) => (
+                {navigationLinks.map((link, _index) => (
                   <NavigationMenuItem key={link.label}>
                     <NavigationMenuLink
                       active={link.active}
-                      className="py-1.5 px-3 font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                      className="py-1.5 font-medium text-muted-foreground hover:text-primary"
                       href={link.href}
                     >
                       {link.label}
@@ -106,17 +102,16 @@ export default function Navbar() {
             </NavigationMenu>
           </div>
         </div>
-
-        {/* Sağ taraf - Butonlar */}
+        {/* Right side */}
         <div className="flex items-center gap-2">
           <Button asChild className="text-sm" size="sm" variant="ghost">
-            <Link href="/login">Giriş Yap</Link>
+            <a href="#">Sign In</a>
           </Button>
-          <Button asChild className="text-sm bg-slate-900 hover:bg-slate-800" size="sm">
-            <Link href="/signup">Başlayın</Link>
+          <Button asChild className="text-sm" size="sm">
+            <a href="#">Get Started</a>
           </Button>
         </div>
       </div>
     </header>
-  )
+  );
 }
