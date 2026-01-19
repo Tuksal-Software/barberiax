@@ -1,30 +1,27 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
-import "./globals.css";
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Toaster } from "@/components/ui/sonner"
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "The Mens Hair",
-  description: "Mobile-first barber appointment system",
-};
+  title: "Barberiax - Berber Yönetim Sistemi",
+  description: "Modern berber salonları için randevu ve yönetim sistemi",
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="tr" className={`${inter.variable} dark`}>
-      <body>
-        <main>{children}</main>
+    <html lang="tr" suppressHydrationWarning>
+      <body className={inter.className}>
+        {children}
         <Toaster />
       </body>
     </html>
-  );
+  )
 }
 
