@@ -16,7 +16,7 @@ export default function HowItWorks() {
   const barberRef = React.useRef<HTMLDivElement>(null)
 
   return (
-    <section className="py-10 md:py-14 bg-slate-50">
+    <section className="py-10 md:py-14 bg-gradient-to-b from-white via-slate-50 to-white">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">
@@ -29,7 +29,7 @@ export default function HowItWorks() {
 
         <BeamContainer
           ref={containerRef}
-          className="mx-auto flex w-full max-w-4xl items-center justify-between rounded-xl border border-slate-200 bg-white p-12 shadow-sm"
+          className="mx-auto flex w-full max-w-4xl items-center justify-between rounded-xl border border-slate-200/50 bg-slate-50/50 backdrop-blur-sm p-12 shadow-sm"
         >
           {/* Müşteri */}
           <div className="flex flex-col items-center gap-2">
