@@ -15,7 +15,7 @@ import {
 
 const navigationLinks = [
   { active: true, href: "/", label: "Ana Sayfa" },
-  { href: "#ozellikler", label: "Özellikler" },
+  { href: "/features", label: "Özellikler" },
   { href: "#nasil-calisir", label: "Nasıl Çalışır" },
   { href: "#fiyatlandirma", label: "Fiyatlandırma" },
   { href: "#iletisim", label: "İletişim" },
