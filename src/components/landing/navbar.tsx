@@ -23,7 +23,7 @@ const navigationLinks = [
 
 export default function Navbar() {
   return (
-    <header className="border-b px-4 md:px-6 bg-white sticky top-0 z-50">
+    <header className="border-b px-4 md:px-6 backdrop-blur-sm sticky top-0 z-50">
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Sol taraf */}
         <div className="flex items-center gap-2">

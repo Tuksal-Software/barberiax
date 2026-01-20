@@ -56,7 +56,7 @@ export default function HowItWorks() {
           <div>
             <BeamContainer
               ref={containerRef}
-              className="flex w-full items-center justify-between rounded-xl bg-white p-10 shadow-sm"
+              className="flex w-full items-center justify-between rounded-xl bg-white/50 backdrop-blur-sm p-10 shadow-sm"
             >
               <div className="flex flex-col items-center gap-2">
                 <BeamNode
@@ -175,7 +175,7 @@ export default function HowItWorks() {
             {steps.map((step, index) => (
               <div key={index} className="group relative">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl opacity-0 group-hover:opacity-100 blur transition duration-500"></div>
-                <div className="relative flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200 transition-all duration-300 group-hover:border-transparent group-hover:shadow-lg">
+                <div className="relative flex items-start gap-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-slate-200 transition-all duration-300 group-hover:border-transparent group-hover:shadow-lg">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg blur-sm opacity-20 group-hover:opacity-40 transition-opacity"></div>
                     <div className="relative w-11 h-11 rounded-lg bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center flex-shrink-0">

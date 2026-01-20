@@ -9,7 +9,7 @@ import { ArrowRight, Heart, Mail, Phone, MapPin } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-50 text-slate-700">
+    <footer className="bg-white/30 backdrop-blur-sm text-slate-700">
       <div className="container max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           
@@ -65,24 +65,24 @@ export default function Footer() {
 
         <Separator className="bg-slate-200 my-6" />
 
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span>© 2026 Barberiax. Tüm hakları saklıdır.</span>
-            <span>•</span>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+          <div className="flex flex-col md:flex-row items-center gap-2 text-sm text-slate-500 order-2 md:order-1">
+            <span>© 2026 BarberiAX. Tüm hakları saklıdır.</span>
+            <span className="hidden md:inline">•</span>
             <span className="flex items-center gap-1">
               Powered by <Heart className="w-3 h-3 text-red-500 fill-red-500" /> IHA-TECH
             </span>
           </div>
           
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 text-sm order-1 md:order-2">
             <Button variant="link" className="h-auto p-0 text-slate-500 hover:text-emerald-500">
               KVKK
             </Button>
-            <span className="text-slate-400">•</span>
+            <span className="hidden md:inline text-slate-700">•</span>
             <Button variant="link" className="h-auto p-0 text-slate-500 hover:text-emerald-500">
               Gizlilik Politikası
             </Button>
-            <span className="text-slate-400">•</span>
+            <span className="hidden md:inline text-slate-700">•</span>
             <Button variant="link" className="h-auto p-0 text-slate-500 hover:text-emerald-500">
               Kullanım Koşulları
             </Button>

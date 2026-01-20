@@ -63,7 +63,7 @@ export default function CalendarShowcase() {
   const [selectedAppointment, setSelectedAppointment] = useState<typeof dummyAppointments[0] | null>(null)
 
   return (
-    <section className="py-10 md:py-14 bg-gradient-to-b from-white via-slate-50 to-white">
+    <section className="py-10 md:py-14">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">
@@ -75,7 +75,7 @@ export default function CalendarShowcase() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-xl bg-white">
+          <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-xl bg-white/50 backdrop-blur-sm">
             <div className="p-6 pb-4">
               <div className="text-center text-sm font-semibold text-slate-900 mb-6">
                 19 Ocak - 25 Ocak 20∞

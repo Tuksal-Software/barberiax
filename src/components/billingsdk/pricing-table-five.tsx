@@ -20,8 +20,8 @@ const sectionVariants = cva("py-32 relative overflow-hidden", {
       large: "py-32",
     },
     theme: {
-      minimal: "bg-background",
-      classic: "bg-gradient-to-b from-background to-muted/20",
+      minimal: "",
+      classic: "",
     },
   },
   defaultVariants: {
@@ -91,9 +91,9 @@ const planCardVariants = cva(
         large: "p-6",
       },
       theme: {
-        minimal: "bg-card border-border hover:bg-muted/30 shadow-sm",
+        minimal: "bg-white/50 backdrop-blur-sm border-border hover:bg-muted/30 shadow-sm",
         classic:
-          "bg-card border-border/50 hover:shadow-xl hover:border-border backdrop-blur-sm shadow-md",
+          "bg-white/50 backdrop-blur-sm border-border/50 hover:shadow-xl hover:border-border shadow-md",
       },
       highlight: {
         true: "",
@@ -131,9 +131,9 @@ const contactCardVariants = cva(
         large: "p-8",
       },
       theme: {
-        minimal: "bg-muted/50 border-border hover:bg-muted/70 shadow-sm",
+        minimal: "bg-white/50 backdrop-blur-sm border-border hover:bg-muted/70 shadow-sm",
         classic:
-          "bg-card border-border/50 hover:shadow-xl hover:border-primary/20 backdrop-blur-sm shadow-md",
+          "bg-white/50 backdrop-blur-sm border-border/50 hover:shadow-xl hover:border-primary/20 shadow-md",
       },
     },
     defaultVariants: {
