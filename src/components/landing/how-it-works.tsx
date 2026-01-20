@@ -8,7 +8,6 @@ import {
   BeamContainer,
   BeamNode,
 } from "@/components/ui/animated-beam"
-import { Card, CardContent } from "@/components/ui/card"
 
 const steps = [
   {
@@ -23,8 +22,8 @@ const steps = [
   },
   {
     icon: CheckCircle,
-    title: "Berber Hazırlanır",
-    description: "Berber randevuyu admin panelden görür ve hazırlık yapar"
+    title: "İşletme Hazırlanır",
+    description: "İşletme randevuyu admin panelden görür ve hazırlık yapar"
   },
   {
     icon: BarChart,
@@ -42,9 +41,9 @@ export default function HowItWorks() {
   const customerReturnRef = React.useRef<HTMLDivElement>(null)
 
   return (
-    <section className="py-10 md:py-14 bg-gradient-to-b from-white via-slate-50 to-white">
+    <section className="py-10 md:py-14">
       <div className="container max-w-7xl mx-auto px-4">
-        <div className="text-center mb-12">
+        <div className="text-center mb-4">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">
             Nasıl Çalışır?
           </h2>
@@ -57,14 +56,14 @@ export default function HowItWorks() {
           <div>
             <BeamContainer
               ref={containerRef}
-              className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+              className="flex w-full items-center justify-between rounded-xl bg-white p-10 shadow-sm"
             >
               <div className="flex flex-col items-center gap-2">
                 <BeamNode
                   ref={customerRef}
-                  className="h-14 w-14 border-2 border-blue-500/20 bg-blue-500/10"
+                  className="h-16 w-16 border-2 border-blue-500/20 bg-blue-500/10"
                 >
-                  <User className="h-7 w-7 text-blue-600" />
+                  <User className="h-8 w-8 text-blue-600" />
                 </BeamNode>
                 <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
                   Müşteri
@@ -74,14 +73,14 @@ export default function HowItWorks() {
               <div className="flex flex-col items-center gap-2">
                 <BeamNode
                   ref={platformRef}
-                  className="h-16 w-16 border-2 border-purple-500/20 bg-purple-500/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                  className="h-20 w-20 border-2 border-purple-500/20 bg-purple-500/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
                 >
                   <Image
                     src="/logo.png"
                     alt="Barberiax"
                     width={32}
                     height={32}
-                    className="w-8 h-8"
+                    className="w-10 h-10"
                   />
                 </BeamNode>
                 <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -93,9 +92,9 @@ export default function HowItWorks() {
                 <div className="flex flex-col items-center gap-2">
                   <BeamNode
                     ref={smsRef}
-                    className="h-12 w-12 border-2 border-emerald-500/20 bg-emerald-500/10"
+                    className="h-14 w-14 border-2 border-emerald-500/20 bg-emerald-500/10"
                   >
-                    <MessageSquare className="h-6 w-6 text-emerald-600" />
+                    <MessageSquare className="h-7 w-7 text-emerald-600" />
                   </BeamNode>
                   <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
                     SMS
@@ -105,21 +104,21 @@ export default function HowItWorks() {
                 <div className="flex flex-col items-center gap-2">
                   <BeamNode
                     ref={barberRef}
-                    className="h-12 w-12 border-2 border-amber-500/20 bg-amber-500/10"
+                    className="h-14 w-14 border-2 border-amber-500/20 bg-amber-500/10"
                   >
-                    <Scissors className="h-6 w-6 text-amber-600" />
+                    <Scissors className="h-7 w-7 text-amber-600" />
                   </BeamNode>
                   <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
-                    Berber
+                    İşletme
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center gap-2">
                   <BeamNode
                     ref={customerReturnRef}
-                    className="h-12 w-12 border-2 border-rose-500/20 bg-rose-500/10"
+                    className="h-14 w-14 border-2 border-rose-500/20 bg-rose-500/10"
                   >
-                    <User className="h-6 w-6 text-rose-600" />
+                    <User className="h-7 w-7 text-rose-600" />
                   </BeamNode>
                   <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
                     Müşteri
@@ -172,19 +171,27 @@ export default function HowItWorks() {
             </BeamContainer>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {steps.map((step, index) => (
-              <Card key={index} className="border-slate-200 hover:shadow-md transition-shadow">
-                <CardContent className="flex items-start gap-4 p-4">
-                  <div className="w-12 h-12 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
-                    <step.icon className="w-6 h-6 text-white" />
+              <div key={index} className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl opacity-0 group-hover:opacity-100 blur transition duration-500"></div>
+                <div className="relative flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200 transition-all duration-300 group-hover:border-transparent group-hover:shadow-lg">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg blur-sm opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                    <div className="relative w-11 h-11 rounded-lg bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center flex-shrink-0">
+                      <step.icon className="w-5 h-5 text-white" />
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900 mb-1">{step.title}</h3>
-                    <p className="text-sm text-slate-600">{step.description}</p>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1 text-base group-hover:text-purple-600 transition-colors">
+                      {step.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {step.description}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </div>
