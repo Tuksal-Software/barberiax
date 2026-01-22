@@ -5,7 +5,7 @@ import { plans } from "@/lib/billingsdk-config"
 
 export default function Pricing() {
   return (
-    <section className="py-10 md:py-14" id="fiyatlandirma">
+    <section className="py-10 md:py-14 bg-white" id="fiyatlandirma">
       <div className="container max-w-7xl mx-auto px-4">
         <PricingTableFive
           plans={plans}

@@ -63,7 +63,7 @@ export default function CalendarShowcase() {
   const [selectedAppointment, setSelectedAppointment] = useState<typeof dummyAppointments[0] | null>(null)
 
   return (
-    <section className="py-10 md:py-14">
+    <section className="py-10 md:py-14 bg-[#f7f7f7]">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">

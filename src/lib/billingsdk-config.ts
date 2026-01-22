@@ -43,7 +43,7 @@ export const plans: Plan[] = [
         iconColor: "text-emerald-500",
       },
       {
-        name: "SMS Hatırlatma Sistemi",
+        name: "SMS Bildirim Sistemi",
         icon: "check",
         iconColor: "text-blue-500",
       },
@@ -51,21 +51,6 @@ export const plans: Plan[] = [
         name: "Mobil Uyumlu Randevu Ekranı",
         icon: "check",
         iconColor: "text-purple-500",
-      },
-      {
-        name: "Gelir ve Gider Takibi",
-        icon: "check",
-        iconColor: "text-amber-500",
-      },
-      {
-        name: "Detaylı Raporlama",
-        icon: "check",
-        iconColor: "text-rose-500",
-      },
-      {
-        name: "Çoklu Berber Yönetimi",
-        icon: "check",
-        iconColor: "text-teal-500",
       },
       {
         name: "Özel Domain Desteği",
@@ -79,9 +64,9 @@ export const plans: Plan[] = [
     title: "Profesyonel Paket",
     description: "+ Özel Tasarım Masrafı",
     currency: "₺",
-    monthlyPrice: "999",
-    yearlyPrice: "9990",
-    buttonText: "İletişime Geçin",
+    monthlyPrice: "1699",
+    yearlyPrice: "16990",
+    buttonText: "Hemen Başla",
     features: [
       {
         name: "Sınırsız Randevu Yönetimi",
@@ -89,7 +74,7 @@ export const plans: Plan[] = [
         iconColor: "text-emerald-500",
       },
       {
-        name: "SMS Hatırlatma Sistemi",
+        name: "SMS Bildirim Sistemi",
         icon: "check",
         iconColor: "text-blue-500",
       },
@@ -99,19 +84,45 @@ export const plans: Plan[] = [
         iconColor: "text-purple-500",
       },
       {
+        name: "Özel Domain Desteği",
+        icon: "check",
+        iconColor: "text-amber-600",
+      },
+      {
         name: "Gelir ve Gider Takibi",
         icon: "check",
         iconColor: "text-amber-500",
       },
       {
-        name: "Detaylı Raporlama",
-        icon: "check",
-        iconColor: "text-rose-500",
-      },
-      {
         name: "Çoklu Berber Yönetimi",
         icon: "check",
         iconColor: "text-teal-500",
+      },
+    ],
+  },
+  {
+    id: "kurumsal",
+    title: "Kurumsal Paket",
+    description: "+ Özel Tasarım Masrafı",
+    currency: "₺",
+    monthlyPrice: "",
+    yearlyPrice: "",
+    buttonText: "İletişime Geçin",
+    features: [
+      {
+        name: "Sınırsız Randevu Yönetimi",
+        icon: "check",
+        iconColor: "text-emerald-500",
+      },
+      {
+        name: "SMS Bildirim Sistemi",
+        icon: "check",
+        iconColor: "text-blue-500",
+      },
+      {
+        name: "Mobil Uyumlu Randevu Ekranı",
+        icon: "check",
+        iconColor: "text-purple-500",
       },
       {
         name: "Özel Domain Desteği",
@@ -119,9 +130,24 @@ export const plans: Plan[] = [
         iconColor: "text-amber-600",
       },
       {
+        name: "Gelir ve Gider Takibi",
+        icon: "check",
+        iconColor: "text-amber-500",
+      },
+      {
+        name: "Çoklu Berber Yönetimi",
+        icon: "check",
+        iconColor: "text-teal-500",
+      },
+      {
         name: "Kişiye Özel Tasarım",
         icon: "check",
-        iconColor: "text-blue-600",
+        iconColor: "text-teal-500",
+      },
+      {
+        name: "Çoklu Bayi Sistemi",
+        icon: "check",
+        iconColor: "text-teal-500",
       },
     ],
   },

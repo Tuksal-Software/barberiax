@@ -7,7 +7,7 @@ import { ArrowRight, Play } from "lucide-react"
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden bg-white">
       <div className="container max-w-7xl mx-auto px-4 py-10 md:py-14">
         <div className="grid lg:grid-cols-5 gap-12 items-center">
           {/* Sol taraf - Text & CTA */}

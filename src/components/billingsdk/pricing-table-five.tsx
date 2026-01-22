@@ -293,7 +293,7 @@ export function PricingTableFive({
                   Yıllık
                   {yearlyPriceDiscount > 0 && (
                     <span className="bg-primary/10 text-primary border-primary/20 ml-1 rounded border px-2 py-0.5 text-xs font-medium">
-                      %{yearlyPriceDiscount} İndirim
+                      2 Ay Bedava
                     </span>
                   )}
                 </Label>
@@ -367,7 +367,7 @@ export function PricingTableFive({
                             {isAnnually ? plan.yearlyPrice : plan.monthlyPrice}
                           </span>
                           <span className="text-muted-foreground text-sm">
-                            /{isAnnually ? "yıl" : "ay"}
+                            {isAnnually ? (plan.monthlyPrice == '' ? '' : "/yıl") : (plan.yearlyPrice == '' ? '' : "/ay")}
                           </span>
                         </motion.div>
                       </AnimatePresence>
