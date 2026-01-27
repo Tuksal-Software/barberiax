@@ -1,39 +1,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyToken } from '@/lib/auth/jwt'
+import { auth } from '@/auth'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const session = await auth()
 
-  if (pathname === '/admin/login') {
-    const token = request.cookies.get('admin-auth')?.value
-    if (token) {
-      const payload = verifyToken(token)
-      if (payload && payload.role === 'admin') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/admin'
-        return NextResponse.redirect(url)
-      }
+  if (pathname === '/login') {
+    if (session?.user) {
+      return NextResponse.redirect(new URL('/admin', request.url))
     }
     return NextResponse.next()
   }
 
   if (pathname.startsWith('/admin')) {
-    const token = request.cookies.get('admin-auth')?.value
-
-    if (!token) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
+    if (!session?.user) {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-
-    const payload = verifyToken(token)
-    if (!payload || payload.role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
-    }
-
     return NextResponse.next()
   }
 
@@ -42,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/login',
     '/admin/:path*',
   ],
 }
-

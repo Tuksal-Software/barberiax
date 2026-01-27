@@ -5,12 +5,13 @@ import { AuditAction, Prisma } from '@prisma/client'
 import { parseTimeToMinutes, minutesToTime, overlaps, getNowUTC } from '@/lib/time'
 import { createAppointmentDateTimeTR } from '@/lib/time/appointmentDateTime'
 import { sendSms } from '@/lib/sms/sms.service'
-import { requireAdmin, getSession } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { dispatchSms, sendSmsForEvent } from '@/lib/sms/sms.dispatcher'
 import { SmsEvent } from '@/lib/sms/sms.events'
 import type { AppointmentApprovedPayload } from '@/lib/sms/sms.templates'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { isCustomerBanned } from './banned-customer.actions'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 export interface CreateAppointmentRequestInput {
   barberId: string
@@ -49,9 +50,11 @@ export async function getCustomerByPhone(phone: string): Promise<{ customerName:
     return null
   }
 
+  const tenantFilter = await getTenantFilter()
   const appointment = await prisma.appointmentRequest.findFirst({
     where: {
       customerPhone: phone,
+      ...tenantFilter,
     },
     orderBy: {
       createdAt: 'desc',
@@ -113,8 +116,12 @@ export async function createAppointmentRequest(
     return { error: 'Tüm zorunlu alanlar doldurulmalıdır' }
   }
 
+  const tenantFilter = await getTenantFilter()
   const barber = await prisma.barber.findUnique({
-    where: { id: barberId },
+    where: { 
+      id: barberId,
+      ...tenantFilter,
+    },
     select: { isActive: true, name: true },
   })
 
@@ -141,6 +148,7 @@ export async function createAppointmentRequest(
       status: {
         in: ['pending', 'approved'],
       },
+      ...tenantFilter,
     },
     select: {
       date: true,
@@ -177,6 +185,7 @@ export async function createAppointmentRequest(
     return { error: 'Aktif bir randevunuz bulunduğu için yeni randevu alamazsınız.' }
   }
 
+  const tenantId = await getTenantIdForCreate()
   const appointmentRequest = await prisma.appointmentRequest.create({
     data: {
       barber: {
@@ -192,6 +201,7 @@ export async function createAppointmentRequest(
       requestedEndTime: finalEndTime,
       ...(serviceType ? { serviceType } : {}),
       status: 'pending',
+      ...(tenantId ? { tenantId } : {}),
     },
   })
 
@@ -234,7 +244,7 @@ export async function createAppointmentRequest(
 export async function approveAppointmentRequest(
   input: ApproveAppointmentRequestInput
 ): Promise<string | { error: string }> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   const { appointmentRequestId, approvedDurationMinutes } = input
 
@@ -248,10 +258,14 @@ export async function approveAppointmentRequest(
 
   let smsPayload: AppointmentApprovedPayload | null = null
 
+  const tenantFilter = await getTenantFilter()
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const appointmentRequest = await tx.appointmentRequest.findUnique({
-      where: { id: appointmentRequestId },
+      where: { 
+        id: appointmentRequestId,
+        ...tenantFilter,
+      },
     })
 
     if (!appointmentRequest) {
@@ -281,6 +295,7 @@ export async function approveAppointmentRequest(
           barberId: appointmentRequest.barberId,
           date: appointmentRequest.date,
           status: 'blocked',
+          ...tenantFilter,
         },
         select: {
           startTime: true,
@@ -291,6 +306,7 @@ export async function approveAppointmentRequest(
         where: {
           barberId: appointmentRequest.barberId,
           date: appointmentRequest.date,
+          ...tenantFilter,
         },
         select: {
           startTime: true,
@@ -311,6 +327,7 @@ export async function approveAppointmentRequest(
       }
     }
 
+    const tenantId = await getTenantIdForCreate()
     await tx.appointmentSlot.create({
       data: {
         barberId: appointmentRequest.barberId,
@@ -319,6 +336,7 @@ export async function approveAppointmentRequest(
         startTime: approvedStartTime,
         endTime: approvedEndTime,
         status: 'blocked',
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 
@@ -368,7 +386,7 @@ export async function approveAppointmentRequest(
 export async function cancelAppointmentRequest(
   input: CancelAppointmentRequestInput
 ): Promise<void> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   const { appointmentRequestId, reason } = input
 
@@ -384,9 +402,13 @@ export async function cancelAppointmentRequest(
     reason?: string | null
   } | null = null
 
+  const tenantFilter = await getTenantFilter()
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const appointmentRequest = await tx.appointmentRequest.findUnique({
-      where: { id: appointmentRequestId },
+      where: { 
+        id: appointmentRequestId,
+        ...tenantFilter,
+      },
       include: {
         appointmentSlots: true,
       },
@@ -462,14 +484,17 @@ export async function cancelAppointmentRequest(
 
   try {
     const appointmentRequest = await prisma.appointmentRequest.findUnique({
-      where: { id: appointmentRequestId },
-      select: { 
-        status: true,
-        barberId: true,
-        date: true,
-        requestedStartTime: true,
-      },
-    })
+        where: { 
+          id: appointmentRequestId,
+          ...tenantFilter,
+        },
+        select: { 
+          status: true,
+          barberId: true,
+          date: true,
+          requestedStartTime: true,
+        },
+      })
 
     try {
       await auditLog({
@@ -490,7 +515,10 @@ export async function cancelAppointmentRequest(
 
     if (appointmentRequest) {
       const fullAppointment = await prisma.appointmentRequest.findUnique({
-        where: { id: appointmentRequestId },
+        where: { 
+          id: appointmentRequestId,
+          ...tenantFilter,
+        },
         select: {
           cancelledBy: true,
           customerName: true,
@@ -509,6 +537,7 @@ export async function cancelAppointmentRequest(
 
         try {
           await sendSms(fullAppointment.customerPhone, customerMessage)
+          const tenantId = await getTenantIdForCreate()
           try {
             await prisma.smsLog.create({
               data: {
@@ -518,12 +547,14 @@ export async function cancelAppointmentRequest(
                 provider: 'vatansms',
                 status: 'success',
                 error: null,
+                ...(tenantId ? { tenantId } : {}),
               },
             })
           } catch (error) {
             console.error('SMS log error:', error)
           }
         } catch (smsError) {
+          const tenantId = await getTenantIdForCreate()
           try {
             await prisma.smsLog.create({
               data: {
@@ -533,6 +564,7 @@ export async function cancelAppointmentRequest(
                 provider: 'vatansms',
                 status: 'error',
                 error: smsError instanceof Error ? smsError.message : String(smsError),
+                ...(tenantId ? { tenantId } : {}),
               },
             })
           } catch (error) {
@@ -546,6 +578,7 @@ export async function cancelAppointmentRequest(
           
           try {
             await sendSms(adminPhone, adminMessage)
+            const tenantId = await getTenantIdForCreate()
             try {
               await prisma.smsLog.create({
                 data: {
@@ -555,12 +588,14 @@ export async function cancelAppointmentRequest(
                   provider: 'vatansms',
                   status: 'success',
                   error: null,
+                  ...(tenantId ? { tenantId } : {}),
                 },
               })
             } catch (error) {
               console.error('SMS log error:', error)
             }
           } catch (smsError) {
+            const tenantId = await getTenantIdForCreate()
             try {
               await prisma.smsLog.create({
                 data: {
@@ -570,6 +605,7 @@ export async function cancelAppointmentRequest(
                   provider: 'vatansms',
                   status: 'error',
                   error: smsError instanceof Error ? smsError.message : String(smsError),
+                  ...(tenantId ? { tenantId } : {}),
                 },
               })
             } catch (error) {
@@ -597,7 +633,7 @@ export async function cancelAppointmentRequest(
 export async function createAdminAppointment(
   input: CreateAdminAppointmentInput
 ): Promise<string> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   const {
     barberId,
@@ -622,8 +658,12 @@ export async function createAdminAppointment(
     throw new Error('Geçersiz süre. 30 veya 60 dakika olmalıdır')
   }
 
+  const tenantFilter = await getTenantFilter()
   const barber = await prisma.barber.findUnique({
-    where: { id: barberId },
+    where: { 
+      id: barberId,
+      ...tenantFilter,
+    },
     select: { isActive: true },
   })
 
@@ -646,6 +686,7 @@ export async function createAdminAppointment(
           barberId,
           date,
           status: 'blocked',
+          ...tenantFilter,
         },
         select: {
           startTime: true,
@@ -656,6 +697,7 @@ export async function createAdminAppointment(
         where: {
           barberId,
           date,
+          ...tenantFilter,
         },
         select: {
           startTime: true,
@@ -676,6 +718,7 @@ export async function createAdminAppointment(
       }
     }
 
+    const tenantId = await getTenantIdForCreate()
     const appointmentRequest = await tx.appointmentRequest.create({
       data: {
         barber: {
@@ -690,6 +733,7 @@ export async function createAdminAppointment(
         requestedStartTime,
         requestedEndTime: approvedEndTime,
         status: 'approved',
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 
@@ -701,6 +745,7 @@ export async function createAdminAppointment(
         startTime: requestedStartTime,
         endTime: approvedEndTime,
         status: 'blocked',
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 

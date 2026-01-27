@@ -1,9 +1,10 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { parseTimeToMinutes, minutesToTime } from '@/lib/time'
 import { AppointmentRequestStatus } from '@prisma/client'
+import { getTenantFilter } from '@/lib/db-helpers'
 
 export interface AppointmentRequestListItem {
   id: string
@@ -27,12 +28,14 @@ export interface AppointmentRequestListItem {
 
 export async function getPendingAppointmentRequests(): Promise<AppointmentRequestListItem[]> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const where: {
     status: 'pending'
     barberId?: string
   } = {
     status: 'pending',
+    ...tenantFilter,
   }
 
   if (session.role === 'barber') {
@@ -75,10 +78,13 @@ export async function getPendingAppointmentRequests(): Promise<AppointmentReques
 
 export async function getRecentAppointments(limit: number = 5): Promise<AppointmentRequestListItem[]> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const where: {
     barberId?: string
-  } = {}
+  } = {
+    ...tenantFilter,
+  }
 
   if (session.role === 'barber') {
     where.barberId = session.userId
@@ -128,10 +134,13 @@ export async function getRecentAppointments(limit: number = 5): Promise<Appointm
 
 export async function getAllAppointmentRequests(): Promise<AppointmentRequestListItem[]> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const where: {
     barberId?: string
-  } = {}
+  } = {
+    ...tenantFilter,
+  }
 
   if (session.role === 'barber') {
     where.barberId = session.userId
@@ -195,8 +204,11 @@ export interface CalendarAppointment {
 
 export async function getCalendarAppointments(): Promise<CalendarAppointment[]> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
-  const where: { barberId?: string } = {}
+  const where: { barberId?: string } = {
+    ...tenantFilter,
+  }
   if (session.role === 'barber') {
     where.barberId = session.userId
   }

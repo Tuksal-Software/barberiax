@@ -1,13 +1,14 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { createAppointmentDateTimeTR } from '@/lib/time/appointmentDateTime'
 import { getNowUTC } from '@/lib/time'
 import { Prisma } from '@prisma/client'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 export interface BarberListItem {
   id: string
@@ -45,10 +46,12 @@ export interface DeactivateBarberResult {
 }
 
 export async function getActiveBarbers(): Promise<BarberListItem[]> {
+  const tenantFilter = await getTenantFilter()
   const barbers = await prisma.barber.findMany({
     where: {
       isActive: true,
       role: 'barber',
+      ...tenantFilter,
     },
     select: {
       id: true,
@@ -66,12 +69,14 @@ export async function getActiveBarbers(): Promise<BarberListItem[]> {
 }
 
 export async function getBarbersForManagement(): Promise<BarberListForManagement[]> {
-  await requireAdmin()
+  await requireAuth()
 
+  const tenantFilter = await getTenantFilter()
   const barbers = await prisma.barber.findMany({
     where: {
       role: 'barber',
       isActive: true,
+      ...tenantFilter,
     },
     select: {
       id: true,
@@ -115,7 +120,7 @@ export async function createBarber(
   input: CreateBarberInput
 ): Promise<{ success: boolean; error?: string; id?: string }> {
   try {
-    const session = await requireAdmin()
+    const session = await requireAuth()
     const { name, experience } = input
 
     if (!name || name.trim().length === 0) {
@@ -128,14 +133,23 @@ export async function createBarber(
     const slug = slugify(name)
     const email = `${slug}@themenshair.com`
 
+    const tenantFilter = await getTenantFilter()
     const existingBarber = await prisma.barber.findUnique({
-      where: { email },
+      where: { 
+        email,
+        ...tenantFilter,
+      },
     })
 
     if (existingBarber) {
       let counter = 1
       let newEmail = `${slug}-${counter}@themenshair.com`
-      while (await prisma.barber.findUnique({ where: { email: newEmail } })) {
+      while (await prisma.barber.findUnique({ 
+        where: { 
+          email: newEmail,
+          ...tenantFilter,
+        } 
+      })) {
         counter++
         newEmail = `${slug}-${counter}@themenshair.com`
       }
@@ -143,6 +157,7 @@ export async function createBarber(
 
       const password = generateRandomPassword()
       const hashedPassword = await bcrypt.hash(password, 10)
+      const tenantId = await getTenantIdForCreate()
 
       const barber = await prisma.barber.create({
         data: {
@@ -152,6 +167,7 @@ export async function createBarber(
           role: 'barber',
           experience: experience || 0,
           isActive: true,
+          ...(tenantId ? { tenantId } : {}),
         },
       })
 
@@ -182,6 +198,7 @@ export async function createBarber(
 
     const password = generateRandomPassword()
     const hashedPassword = await bcrypt.hash(password, 10)
+    const tenantId = await getTenantIdForCreate()
 
     const barber = await prisma.barber.create({
       data: {
@@ -191,6 +208,7 @@ export async function createBarber(
         role: 'barber',
         experience: experience || 0,
         isActive: true,
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 
@@ -230,7 +248,7 @@ export async function updateBarber(
   input: UpdateBarberInput
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const session = await requireAdmin()
+    const session = await requireAuth()
     const { id, name, experience } = input
 
     if (!name || name.trim().length === 0) {
@@ -240,8 +258,12 @@ export async function updateBarber(
       }
     }
 
+    const tenantFilter = await getTenantFilter()
     const barber = await prisma.barber.findUnique({
-      where: { id },
+      where: { 
+        id,
+        ...tenantFilter,
+      },
       select: {
         id: true,
         name: true,
@@ -307,9 +329,10 @@ export async function updateBarber(
 export async function checkBarberFutureAppointments(
   barberId: string
 ): Promise<{ hasFutureAppointments: boolean; count: number }> {
-  await requireAdmin()
+  await requireAuth()
 
   const nowTR = getNowUTC()
+  const tenantFilter = await getTenantFilter()
 
   const activeAppointments = await prisma.appointmentRequest.findMany({
     where: {
@@ -317,6 +340,7 @@ export async function checkBarberFutureAppointments(
       status: {
         in: ['pending', 'approved'],
       },
+      ...tenantFilter,
     },
     select: {
       id: true,
@@ -343,10 +367,14 @@ export async function deactivateBarber(
   barberId: string
 ): Promise<DeactivateBarberResult> {
   try {
-    const session = await requireAdmin()
+    const session = await requireAuth()
 
+    const tenantFilter = await getTenantFilter()
     const barber = await prisma.barber.findUnique({
-      where: { id: barberId },
+      where: { 
+        id: barberId,
+        ...tenantFilter,
+      },
       select: {
         id: true,
         name: true,
@@ -384,6 +412,7 @@ export async function deactivateBarber(
         status: {
           in: ['pending', 'approved'],
         },
+        ...tenantFilter,
       },
       select: {
         id: true,
@@ -514,10 +543,14 @@ export async function updateBarberImage(
   imagePath: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin()
+    await requireAuth()
 
+    const tenantFilter = await getTenantFilter()
     const barber = await prisma.barber.findUnique({
-      where: { id: barberId },
+      where: { 
+        id: barberId,
+        ...tenantFilter,
+      },
       select: {
         id: true,
         role: true,
@@ -558,8 +591,12 @@ export async function updateBarberImage(
 }
 
 export async function getBarberById(barberId: string) {
+  const tenantFilter = await getTenantFilter()
   const barber = await prisma.barber.findUnique({
-    where: { id: barberId },
+    where: { 
+      id: barberId,
+      ...tenantFilter,
+    },
     select: {
       id: true,
       name: true,

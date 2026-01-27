@@ -1,10 +1,11 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 export interface GetLedgerCandidatesParams {
   barberId?: string
@@ -48,6 +49,7 @@ export async function getLedgerCandidates(
 ): Promise<GetLedgerCandidatesResult> {
   const session = await requireAuth()
   const { barberId } = params
+  const tenantFilter = await getTenantFilter()
 
   let finalBarberId = barberId
   if (session.role === 'barber') {
@@ -56,6 +58,7 @@ export async function getLedgerCandidates(
 
   const where: Prisma.AppointmentRequestWhereInput = {
     status: 'done',
+    ...tenantFilter,
   }
 
   if (finalBarberId) {
@@ -171,8 +174,12 @@ export async function upsertLedgerForAppointment(
       }
     }
 
+    const tenantFilter = await getTenantFilter()
     const appointmentRequest = await prisma.appointmentRequest.findUnique({
-      where: { id: appointmentRequestId },
+      where: { 
+        id: appointmentRequestId,
+        ...tenantFilter,
+      },
       select: {
         id: true,
         barberId: true,
@@ -206,6 +213,7 @@ export async function upsertLedgerForAppointment(
     const existingEntry = await prisma.ledgerEntry.findUnique({
       where: {
         appointmentRequestId: appointmentRequest.id,
+        ...tenantFilter,
       },
     })
 
@@ -215,9 +223,11 @@ export async function upsertLedgerForAppointment(
       description: existingEntry.description,
     } : null
 
+    const tenantId = await getTenantIdForCreate()
     const ledgerEntry = await prisma.ledgerEntry.upsert({
       where: {
         appointmentRequestId: appointmentRequest.id,
+        ...tenantFilter,
       },
       create: {
         barberId: appointmentRequest.barberId,
@@ -226,6 +236,7 @@ export async function upsertLedgerForAppointment(
         customerName: appointmentRequest.customerName,
         amount: new Prisma.Decimal(amount),
         description: description || null,
+        ...(tenantId ? { tenantId } : {}),
       },
       update: {
         amount: new Prisma.Decimal(amount),
@@ -274,9 +285,11 @@ export async function deleteLedgerEntry(
   try {
     const session = await requireAuth()
 
+    const tenantFilter = await getTenantFilter()
     const ledgerEntry = await prisma.ledgerEntry.findUnique({
       where: {
         appointmentRequestId,
+        ...tenantFilter,
       },
       include: {
         appointmentRequest: {
@@ -311,6 +324,7 @@ export async function deleteLedgerEntry(
     await prisma.ledgerEntry.delete({
       where: {
         appointmentRequestId,
+        ...tenantFilter,
       },
     })
 
@@ -356,8 +370,10 @@ export async function getLedgerSummary(
     finalBarberId = session.userId
   }
 
+  const tenantFilter = await getTenantFilter()
   const where: Prisma.AppointmentRequestWhereInput = {
     status: 'done',
+    ...tenantFilter,
   }
 
   if (finalBarberId) {
@@ -378,6 +394,7 @@ export async function getLedgerSummary(
         appointmentRequest: {
           status: 'done',
         },
+        ...tenantFilter,
       },
     }),
   ])

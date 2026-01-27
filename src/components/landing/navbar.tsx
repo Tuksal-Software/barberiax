@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { auth } from "@/auth"
 
 const navigationLinks = [
   { active: true, href: "/", label: "Ana Sayfa" },
@@ -21,7 +22,8 @@ const navigationLinks = [
   { href: "#iletisim", label: "İletişim" },
 ]
 
-export default function Navbar() {
+export default async function Navbar() {
+  const session = await auth()
   return (
     <header className="border-b px-4 md:px-6 backdrop-blur-sm sticky top-0 z-50">
       <div className="flex h-16 items-center justify-between gap-4">
@@ -109,12 +111,20 @@ export default function Navbar() {
 
         {/* Sağ taraf - Butonlar */}
         <div className="flex items-center gap-2">
-          <Button asChild className="text-sm" size="sm" variant="ghost">
-            <Link href="/login">Giriş Yap</Link>
-          </Button>
-          <Button asChild className="text-sm bg-slate-900 hover:bg-slate-800" size="sm">
-            <Link href="/signup">Başlayın</Link>
-          </Button>
+          {session?.user ? (
+            <Button asChild className="text-sm bg-slate-900 hover:bg-slate-800" size="sm">
+              <Link href="/admin">Admin Paneli</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild className="text-sm" size="sm" variant="ghost">
+                <Link href="/login">Giriş Yap</Link>
+              </Button>
+              <Button asChild className="text-sm bg-slate-900 hover:bg-slate-800" size="sm">
+                <Link href="/signup">Başlayın</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

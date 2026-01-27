@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { parseTimeToMinutes } from "@/lib/time"
+import { getTenantFilter, getCurrentTenant, getTenantIdForCreate } from "@/lib/db-helpers"
 
 export interface WaitlistRequest {
   id: string
@@ -20,6 +21,18 @@ export async function getBarberWorkingHoursForDate(barberId: string, date: strin
   const dateObj = new Date(date)
   if (isNaN(dateObj.getTime())) {
     throw new Error("Geçersiz tarih formatı")
+  }
+
+  const tenantFilter = await getTenantFilter()
+  const barber = await prisma.barber.findUnique({
+    where: {
+      id: barberId,
+      ...tenantFilter,
+    },
+  })
+
+  if (!barber) {
+    throw new Error("Berber bulunamadı")
   }
 
   const dayOfWeek = dateObj.getDay()
@@ -93,6 +106,20 @@ export async function createWaitlistRequest(data: {
 }) {
   const { customerPhone, customerName, barberId, preferredDate, timeRangeType } = data
 
+  const tenantFilter = await getTenantFilter()
+  const { tenantId } = await getCurrentTenant()
+
+  const barber = await prisma.barber.findUnique({
+    where: {
+      id: barberId,
+      ...tenantFilter,
+    },
+  })
+
+  if (!barber) {
+    throw new Error('Berber bulunamadı')
+  }
+
   const normalizedPhone = customerPhone.startsWith('+90') 
     ? customerPhone 
     : `+90${customerPhone.replace(/\D/g, '')}`
@@ -119,6 +146,7 @@ export async function createWaitlistRequest(data: {
       preferredDate,
       timeRangeType,
       status: 'active',
+      ...(tenantId ? { tenantId } : {}),
     }
   })
 
@@ -133,11 +161,13 @@ export async function notifyWaitingCustomers(data: {
 }) {
   const { barberId, date, cancelledTime } = data
   
+  const tenantFilter = await getTenantFilter()
   const waitingRequests = await prisma.appointmentWaitlist.findMany({
     where: {
       barberId,
       preferredDate: date,
       status: 'active',
+      ...tenantFilter,
     }
   })
 
@@ -168,6 +198,7 @@ export async function notifyWaitingCustomers(data: {
       const { sendSms } = await import('@/lib/sms/sms.service')
       const siteUrl = process.env.SITE_URL || 'https://www.themenshair.com'
       const message = `Merhaba ${request.customerName}, ${date} tarihinde ${cancelledTime} saati açıldı! Hemen randevu almak için: ${siteUrl}`
+      const tenantId = await getTenantIdForCreate()
       
       try {
         await sendSms(request.customerPhone, message)
@@ -179,6 +210,7 @@ export async function notifyWaitingCustomers(data: {
             event: 'WAITLIST_NOTIFICATION',
             provider: 'vatansms',
             status: 'success',
+            ...(tenantId ? { tenantId } : {}),
           }
         })
       } catch (error) {
@@ -192,12 +224,16 @@ export async function notifyWaitingCustomers(data: {
             provider: 'vatansms',
             status: 'error',
             error: error instanceof Error ? error.message : String(error),
+            ...(tenantId ? { tenantId } : {}),
           }
         })
       }
 
       await prisma.appointmentWaitlist.update({
-        where: { id: request.id },
+        where: { 
+          id: request.id,
+          ...tenantFilter,
+        },
         data: {
           status: 'notified',
           notifiedAt: new Date(),
@@ -210,7 +246,11 @@ export async function notifyWaitingCustomers(data: {
 }
 
 export async function getAllWaitlistRequests(): Promise<WaitlistRequest[]> {
+  const tenantFilter = await getTenantFilter()
   const requests = await prisma.appointmentWaitlist.findMany({
+    where: {
+      ...tenantFilter,
+    },
     orderBy: { createdAt: 'desc' },
     take: 100,
   })

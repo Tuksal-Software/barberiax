@@ -1,9 +1,10 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
+import { getTenantFilter } from '@/lib/db-helpers'
 
 export interface FinanceSummary {
   totalRevenue: number
@@ -21,6 +22,7 @@ export async function getFinanceSummary(
   range: 'day' | 'week' | 'month' | 'all'
 ): Promise<FinanceSummary> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
   
   const now = new Date()
   let dateStart: string | null = null
@@ -42,7 +44,9 @@ export async function getFinanceSummary(
     dateEnd = format(monthEnd, 'yyyy-MM-dd')
   }
 
-  const ledgerWhere: Prisma.LedgerEntryWhereInput = {}
+  const ledgerWhere: Prisma.LedgerEntryWhereInput = {
+    ...tenantFilter,
+  }
   if (dateStart && dateEnd) {
     ledgerWhere.date = {
       gte: dateStart,
@@ -53,7 +57,9 @@ export async function getFinanceSummary(
     ledgerWhere.barberId = session.userId
   }
 
-  const expenseWhere: Prisma.ExpenseWhereInput = {}
+  const expenseWhere: Prisma.ExpenseWhereInput = {
+    ...tenantFilter,
+  }
   if (dateStart && dateEnd) {
     expenseWhere.date = {
       gte: dateStart,
@@ -91,6 +97,7 @@ export async function getFinanceChartData(
   range: 'week' | 'month'
 ): Promise<FinanceChartData[]> {
   const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
   
   const now = new Date()
   let intervals: Date[] = []
@@ -120,6 +127,7 @@ export async function getFinanceChartData(
 
     const ledgerWhere: Prisma.LedgerEntryWhereInput = {
       date: dateStr,
+      ...tenantFilter,
     }
     if (session.role === 'barber') {
       ledgerWhere.barberId = session.userId
@@ -127,6 +135,7 @@ export async function getFinanceChartData(
 
     const expenseWhere: Prisma.ExpenseWhereInput = {
       date: dateStr,
+      ...tenantFilter,
     }
 
     const [revenueResult, expenseResult] = await Promise.all([

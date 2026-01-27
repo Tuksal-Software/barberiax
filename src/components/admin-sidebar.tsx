@@ -17,12 +17,8 @@ import {
   RefreshCwIcon,
   ShieldBan,
   Bell,
-  LogOut,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { useTransition } from "react"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
 
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -38,8 +34,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { logout } from "@/lib/actions/auth.actions"
-import { getSessionClient } from "@/lib/actions/auth-client.actions"
+import { getSessionClient } from "@/lib/actions/auth"
 import { getShopName } from "@/lib/actions/settings.actions"
 import { getBarberById } from "@/lib/actions/barber.actions"
 
@@ -144,10 +139,11 @@ const groupLabels: Record<string, string> = {
   settings: "Ayarlar"
 }
 
-export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AdminSidebar({ 
+  isDisabled = false,
+  ...props 
+}: React.ComponentProps<typeof Sidebar> & { isDisabled?: boolean }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
   const [user, setUser] = React.useState<{ 
     name: string
     email: string
@@ -189,17 +185,6 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
     loadShopName()
   }, [])
 
-  const handleLogout = () => {
-    if (isPending) return
-    
-    startTransition(async () => {
-      await logout()
-      toast.success("Çıkış yapıldı")
-      router.replace("/admin/login")
-      router.refresh()
-    })
-  }
-
   const navItemsWithActive = navItems.map((item) => ({
     ...item,
     isActive: pathname === item.url || 
@@ -222,18 +207,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              asChild
-              className="data-[slot=sidebar-menu-button]:bg-sidebar"
-            >
-              <Link 
-                href="/admin"
-                onClick={() => {
-                  if (isMobile) {
-                    setOpenMobile(false)
-                  }
-                }}
+            {isDisabled ? (
+              <SidebarMenuButton
+                size="lg"
+                disabled
+                className="data-[slot=sidebar-menu-button]:bg-sidebar opacity-50 cursor-not-allowed"
               >
                 <Avatar className="h-8 w-8 ring-2 ring-white/20">
                   <AvatarImage 
@@ -249,21 +227,38 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                   <span className="truncate font-semibold">{shopName}</span>
                   <span className="truncate text-xs">{user?.name || "Admin"}</span>
                 </div>
-
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleLogout()
+              </SidebarMenuButton>
+            ) : (
+              <SidebarMenuButton
+                size="lg"
+                asChild
+                className="data-[slot=sidebar-menu-button]:bg-sidebar"
+              >
+                <Link 
+                  href="/admin"
+                  onClick={() => {
+                    if (isMobile) {
+                      setOpenMobile(false)
+                    }
                   }}
-                  disabled={isPending}
-                  className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-white/10 transition-colors"
-                  title="Çıkış Yap"
                 >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </Link>
-            </SidebarMenuButton>
+                  <Avatar className="h-8 w-8 ring-2 ring-white/20">
+                    <AvatarImage 
+                      src={user?.image || undefined}
+                      alt={user?.name || "Admin"} 
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold">
+                      {user?.name?.[0]?.toUpperCase() || "A"}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{shopName}</span>
+                    <span className="truncate text-xs">{user?.name || "Admin"}</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -283,23 +278,34 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                     const Icon = item.icon
                     return (
                       <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          asChild
-                          tooltip={item.title}
-                          isActive={item.isActive}
-                        >
-                          <Link 
-                            href={item.url}
-                            onClick={() => {
-                              if (isMobile) {
-                                setOpenMobile(false)
-                              }
-                            }}
+                        {isDisabled ? (
+                          <SidebarMenuButton
+                            tooltip={item.title}
+                            disabled
+                            className="opacity-50 cursor-not-allowed"
                           >
                             {Icon && <Icon />}
                             <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                          </SidebarMenuButton>
+                        ) : (
+                          <SidebarMenuButton
+                            asChild
+                            tooltip={item.title}
+                            isActive={item.isActive}
+                          >
+                            <Link 
+                              href={item.url}
+                              onClick={() => {
+                                if (isMobile) {
+                                  setOpenMobile(false)
+                                }
+                              }}
+                            >
+                              {Icon && <Icon />}
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        )}
                       </SidebarMenuItem>
                     )
                   })}

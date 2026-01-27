@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { requireAdmin, getSession } from './auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { getSetting, setSetting, getAllSettings } from '@/lib/settings/settings.service'
 import { defaultSettings } from '@/lib/settings/defaults'
 import { publicEnv } from '@/lib/config/env.public'
@@ -32,7 +32,7 @@ export interface SettingsResponse {
 }
 
 export async function getSettings(): Promise<SettingsResponse> {
-  await requireAdmin()
+  await requireAuth()
 
   const dbSettings = await getAllSettings()
 
@@ -64,7 +64,7 @@ export async function getShopName(): Promise<string> {
 export async function updateSettings(
   payload: z.infer<typeof updateSettingsSchema>
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   try {
     const validated = updateSettingsSchema.parse(payload)

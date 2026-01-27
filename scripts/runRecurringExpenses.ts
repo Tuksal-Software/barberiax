@@ -4,6 +4,7 @@ import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
 import { addDays, addWeeks, addMonths, format, parseISO } from 'date-fns'
 import { Prisma } from '@prisma/client'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 function calculateNextRunAt(
   currentNextRunAt: Date,
@@ -67,6 +68,7 @@ async function main() {
           description: recurringExpense.title,
           sourceType: 'recurring',
           sourceId: recurringExpense.id,
+          tenantId: recurringExpense.tenantId,
         },
       })
       

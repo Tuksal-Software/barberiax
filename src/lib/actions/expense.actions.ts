@@ -1,10 +1,11 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 export interface CreateExpenseInput {
   date: string
@@ -48,6 +49,7 @@ export async function createExpense(
     }
 
     const session = await requireAuth()
+    const tenantId = await getTenantIdForCreate()
 
     const expense = await prisma.expense.create({
       data: {
@@ -55,6 +57,7 @@ export async function createExpense(
         amount: new Prisma.Decimal(amount),
         category,
         description: description || null,
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 
@@ -103,11 +106,15 @@ export async function getExpensesByDate(
   date: string | null
 ): Promise<ExpenseItem[]> {
   await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const where = date && date.trim() !== '' ? { date } : {}
 
   const expenses = await prisma.expense.findMany({
-    where,
+    where: {
+      ...where,
+      ...tenantFilter,
+    },
     orderBy: {
       createdAt: 'desc',
     },
@@ -127,11 +134,15 @@ export async function getExpenseDayTotal(
   date: string | null
 ): Promise<string> {
   await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const where = date && date.trim() !== '' ? { date } : {}
 
   const result = await prisma.expense.aggregate({
-    where,
+    where: {
+      ...where,
+      ...tenantFilter,
+    },
     _sum: {
       amount: true,
     },
@@ -145,6 +156,7 @@ export async function getExpenseMonthTotal(
   month: string
 ): Promise<string> {
   await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   if (!month.match(/^\d{4}-\d{2}$/)) {
     return '0'
@@ -155,6 +167,7 @@ export async function getExpenseMonthTotal(
       date: {
         startsWith: month,
       },
+      ...tenantFilter,
     },
     _sum: {
       amount: true,

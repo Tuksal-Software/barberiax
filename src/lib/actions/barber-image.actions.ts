@@ -1,6 +1,6 @@
 'use server'
 
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { updateBarberImage } from './barber.actions'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
@@ -11,7 +11,7 @@ export async function uploadBarberImage(
   formData: FormData
 ): Promise<{ success: boolean; error?: string; path?: string }> {
   try {
-    await requireAdmin()
+    await requireAuth()
 
     const file = formData.get('file') as File | null
     if (!file) {

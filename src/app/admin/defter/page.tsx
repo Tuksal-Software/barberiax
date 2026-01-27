@@ -39,7 +39,7 @@ import {
   getLedgerSummary,
 } from "@/lib/actions/ledger-v2.actions"
 import type { UnpaidLedgerItem, PaidLedgerItem } from "@/lib/actions/ledger-v2.actions"
-import { getSessionClient } from "@/lib/actions/auth-client.actions"
+import { getSessionClient } from "@/lib/actions/auth"
 import { toast } from "sonner"
 import { 
   Edit2, 
@@ -130,8 +130,9 @@ export default function DefterPage() {
     try {
       const session = await getSessionClient()
       if (session) {
-        setIsAdmin(session.role === "admin")
-        if (session.role === "admin") {
+        const isAdminRole = session.role === "super_admin" || session.role === "tenant_owner"
+        setIsAdmin(isAdminRole)
+        if (isAdminRole) {
           const barbersList = await getActiveBarbers()
           setBarbers(barbersList.map((b) => ({ id: b.id, name: b.name })))
         } else {

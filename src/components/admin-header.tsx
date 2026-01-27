@@ -1,6 +1,11 @@
+"use client"
+
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { AdminBreadcrumb } from "@/components/admin-breadcrumb"
+import { Button } from "@/components/ui/button"
+import { LogOut } from "lucide-react"
+import { logout } from "@/lib/actions/auth"
 
 export function AdminHeader() {
   return (
@@ -12,8 +17,21 @@ export function AdminHeader() {
           className="h-4 bg-slate-300"
         />
         <AdminBreadcrumb />
+        
+        <div className="ml-auto">
+          <form action={logout}>
+            <Button 
+              type="submit" 
+              variant="ghost" 
+              size="sm"
+              className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Çıkış Yap
+            </Button>
+          </form>
+        </div>
       </div>
     </header>
   )
 }
-

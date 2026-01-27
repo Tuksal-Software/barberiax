@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
+import { getTenantFilter, getTenantIdForCreate } from "@/lib/db-helpers"
 
 export interface BannedCustomerWithStats {
   id: string
@@ -16,8 +17,12 @@ export interface BannedCustomerWithStats {
 }
 
 export async function getAllBannedCustomers(): Promise<BannedCustomerWithStats[]> {
+  const tenantFilter = await getTenantFilter()
   const bannedCustomers = await prisma.bannedCustomer.findMany({
-    where: { isActive: true },
+    where: { 
+      isActive: true,
+      ...tenantFilter,
+    },
     orderBy: { bannedAt: 'desc' },
   })
 
@@ -27,6 +32,7 @@ export async function getAllBannedCustomers(): Promise<BannedCustomerWithStats[]
         where: {
           customerPhone: customer.customerPhone,
           status: 'cancelled',
+          ...tenantFilter,
         },
       })
 
@@ -53,10 +59,12 @@ export async function banCustomer(data: {
     ? customerPhone 
     : `+90${customerPhone.replace(/\D/g, '')}`
 
+  const tenantFilter = await getTenantFilter()
   const existing = await prisma.bannedCustomer.findFirst({
     where: {
       customerPhone: normalizedPhone,
       isActive: true,
+      ...tenantFilter,
     },
   })
 
@@ -72,6 +80,7 @@ export async function banCustomer(data: {
     where: {
       customerPhone: normalizedPhone,
       isActive: false,
+      ...tenantFilter,
     },
   })
 
@@ -81,6 +90,7 @@ export async function banCustomer(data: {
     })
   }
 
+  const tenantId = await getTenantIdForCreate()
   await prisma.bannedCustomer.create({
     data: {
       customerPhone: normalizedPhone,
@@ -89,6 +99,7 @@ export async function banCustomer(data: {
       banType,
       bannedUntil: banType === 'temporary' ? bannedUntil : null,
       isActive: true,
+      ...(tenantId ? { tenantId } : {}),
     },
   })
 
@@ -97,8 +108,12 @@ export async function banCustomer(data: {
 }
 
 export async function unbanCustomer(id: string) {
+  const tenantFilter = await getTenantFilter()
   await prisma.bannedCustomer.update({
-    where: { id },
+    where: { 
+      id,
+      ...tenantFilter,
+    },
     data: { isActive: false },
   })
 
@@ -112,11 +127,13 @@ export async function isCustomerBanned(customerPhone: string): Promise<boolean> 
     : `+90${customerPhone.replace(/\D/g, '')}`
 
   const now = new Date()
+  const tenantFilter = await getTenantFilter()
   
   const bannedCustomer = await prisma.bannedCustomer.findFirst({
     where: {
       customerPhone: normalizedPhone,
       isActive: true,
+      ...tenantFilter,
       OR: [
         { banType: 'permanent' },
         {

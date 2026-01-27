@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth, getTenantFilter } from '@/lib/db-helpers'
 
 export interface SmsLogItem {
   id: string
@@ -22,9 +22,13 @@ export interface SmsLogsResponse {
 }
 
 export async function getSmsLogs(limit: number = 50): Promise<SmsLogsResponse> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const logs = await prisma.smsLog.findMany({
+    where: {
+      ...tenantFilter,
+    },
     take: limit,
     orderBy: {
       createdAt: 'desc',
@@ -71,6 +75,7 @@ export async function getSmsLogs(limit: number = 50): Promise<SmsLogsResponse> {
         id: {
           in: appointmentRequestIds,
         },
+        ...tenantFilter,
       },
       select: {
         id: true,
@@ -90,11 +95,13 @@ export async function getSmsLogs(limit: number = 50): Promise<SmsLogsResponse> {
 }
 
 export async function getLastReminderJobRun(): Promise<Date | null> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const latestJob = await prisma.systemJobLog.findFirst({
     where: {
       jobName: 'appointment_reminders',
+      ...tenantFilter,
     },
     orderBy: {
       ranAt: 'desc',

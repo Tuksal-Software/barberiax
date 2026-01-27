@@ -4,12 +4,19 @@ import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
 import { unstable_noStore as noStore } from 'next/cache'
+import { getCurrentTenant } from '@/lib/db-helpers'
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   noStore()
   try {
+    const { tenantId } = await getCurrentTenant()
     const setting = await prisma.appSetting.findUnique({
-      where: { key },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key,
+        },
+      },
     })
     if (setting) {
       return setting.value as T
@@ -22,17 +29,29 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function setSetting(key: string, value: unknown, actorId?: string): Promise<void> {
   const jsonValue = value === null ? Prisma.JsonNull : value
+  const { tenantId } = await getCurrentTenant()
   
   const existing = await prisma.appSetting.findUnique({
-    where: { key },
+    where: { 
+      tenantId_key: {
+        tenantId,
+        key,
+      },
+    },
   })
   
   const isCreate = !existing
   const oldValue = existing?.value
 
   await prisma.appSetting.upsert({
-    where: { key },
+    where: { 
+      tenantId_key: {
+        tenantId,
+        key,
+      },
+    },
     create: {
+      tenantId,
       key,
       value: jsonValue as Prisma.InputJsonValue,
     },
@@ -62,7 +81,10 @@ export async function setSetting(key: string, value: unknown, actorId?: string):
 }
 
 export async function getAllSettings(): Promise<Record<string, unknown>> {
-  const settings = await prisma.appSetting.findMany()
+  const { tenantId } = await getCurrentTenant()
+  const settings = await prisma.appSetting.findMany({
+    where: { tenantId },
+  })
   const result: Record<string, unknown> = {}
   for (const setting of settings) {
     result[setting.key] = setting.value
@@ -71,7 +93,9 @@ export async function getAllSettings(): Promise<Record<string, unknown>> {
 }
 
 export async function ensureDefaultSettings(): Promise<void> {
+  const { tenantId } = await getCurrentTenant()
   const existingSettings = await prisma.appSetting.findMany({
+    where: { tenantId },
     select: { key: true },
   })
   const existingKeys = new Set(existingSettings.map((s) => s.key))
@@ -80,8 +104,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('adminPhone')) {
     await prisma.appSetting.upsert({
-      where: { key: 'adminPhone' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'adminPhone',
+        },
+      },
       create: {
+        tenantId,
         key: 'adminPhone',
         value: defaultSettings.adminPhone === null ? Prisma.JsonNull : defaultSettings.adminPhone,
       },
@@ -92,8 +122,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('shopName')) {
     await prisma.appSetting.upsert({
-      where: { key: 'shopName' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'shopName',
+        },
+      },
       create: {
+        tenantId,
         key: 'shopName',
         value: defaultSettings.shopName,
       },
@@ -104,8 +140,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('sms')) {
     await prisma.appSetting.upsert({
-      where: { key: 'sms' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'sms',
+        },
+      },
       create: {
+        tenantId,
         key: 'sms',
         value: defaultSettings.sms,
       },
@@ -116,8 +158,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('customerCancel')) {
     await prisma.appSetting.upsert({
-      where: { key: 'customerCancel' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'customerCancel',
+        },
+      },
       create: {
+        tenantId,
         key: 'customerCancel',
         value: defaultSettings.customerCancel,
       },
@@ -128,8 +176,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('timezone')) {
     await prisma.appSetting.upsert({
-      where: { key: 'timezone' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'timezone',
+        },
+      },
       create: {
+        tenantId,
         key: 'timezone',
         value: defaultSettings.timezone,
       },
@@ -140,8 +194,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('enableServiceSelection')) {
     await prisma.appSetting.upsert({
-      where: { key: 'enableServiceSelection' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'enableServiceSelection',
+        },
+      },
       create: {
+        tenantId,
         key: 'enableServiceSelection',
         value: defaultSettings.enableServiceSelection,
       },
@@ -152,8 +212,14 @@ export async function ensureDefaultSettings(): Promise<void> {
 
   if (!existingKeys.has('appointmentCancelReminderHours')) {
     await prisma.appSetting.upsert({
-      where: { key: 'appointmentCancelReminderHours' },
+      where: { 
+        tenantId_key: {
+          tenantId,
+          key: 'appointmentCancelReminderHours',
+        },
+      },
       create: {
+        tenantId,
         key: 'appointmentCancelReminderHours',
         value: defaultSettings.appointmentCancelReminderHours === null ? Prisma.JsonNull : defaultSettings.appointmentCancelReminderHours,
       },

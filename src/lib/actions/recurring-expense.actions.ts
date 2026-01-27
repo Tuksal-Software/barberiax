@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/actions/auth.actions'
+import { requireAuth, getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
@@ -76,6 +76,7 @@ export async function createRecurringExpense(
     }
 
     const nextRunAt = calculateNextRunAt(startDateObj, repeatType, repeatInterval)
+    const { tenantId } = await getCurrentTenant()
 
     const recurringExpense = await prisma.recurringExpense.create({
       data: {
@@ -88,6 +89,7 @@ export async function createRecurringExpense(
         nextRunAt,
         endDate: endDate || null,
         isActive: true,
+        ...(tenantId ? { tenantId } : {}),
       },
     })
 
@@ -143,8 +145,12 @@ export interface RecurringExpenseItem {
 
 export async function getRecurringExpenses(): Promise<RecurringExpenseItem[]> {
   await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const recurringExpenses = await prisma.recurringExpense.findMany({
+    where: {
+      ...tenantFilter,
+    },
     orderBy: {
       createdAt: 'desc',
     },
@@ -172,9 +178,13 @@ export async function toggleRecurringExpense(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await requireAuth()
+    const tenantFilter = await getTenantFilter()
 
     await prisma.recurringExpense.update({
-      where: { id },
+      where: { 
+        id,
+        ...tenantFilter,
+      },
       data: { isActive },
     })
 

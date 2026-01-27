@@ -5,7 +5,7 @@ import { AuditAction, Prisma, SubscriptionRecurrenceType } from '@prisma/client'
 import { parseTimeToMinutes, minutesToTime, overlaps } from '@/lib/time'
 import { createAppointmentDateTimeTR } from '@/lib/time/appointmentDateTime'
 import { getNowUTC } from '@/lib/time'
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth, getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 import { dispatchSms } from '@/lib/sms/sms.dispatcher'
 import { SmsEvent } from '@/lib/sms/sms.events'
 import { auditLog } from '@/lib/audit/audit.logger'
@@ -205,7 +205,7 @@ async function checkSlotAvailability(
 export async function createSubscription(
   input: CreateSubscriptionInput
 ): Promise<string> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
   
   let {
     barberId,
@@ -221,10 +221,12 @@ export async function createSubscription(
   } = input
   
   if (!barberId) {
+    const tenantFilter = await getTenantFilter()
     const activeBarbers = await prisma.barber.findMany({
       where: {
         isActive: true,
         role: 'barber',
+        ...tenantFilter,
       },
       select: {
         id: true,
@@ -258,8 +260,12 @@ export async function createSubscription(
     throw new Error('Hafta numarası sadece aylık abonmanlar için kullanılabilir')
   }
   
+  const tenantFilter = await getTenantFilter()
   const barber = await prisma.barber.findUnique({
-    where: { id: barberId },
+    where: { 
+      id: barberId,
+      ...tenantFilter,
+    },
     select: { isActive: true },
   })
   
@@ -288,6 +294,7 @@ export async function createSubscription(
   }
   
   let subscriptionId: string
+  const tenantId = await getTenantIdForCreate()
   
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const subscription = await tx.subscription.create({
@@ -303,6 +310,7 @@ export async function createSubscription(
         startDate,
         endDate: endDate || null,
         isActive: true,
+        ...(tenantId ? { tenantId } : {}),
       },
     })
     
@@ -340,6 +348,7 @@ export async function createSubscription(
           requestedEndTime: endTime,
           status: 'approved',
           subscriptionId: subscription.id,
+          ...(tenantId ? { tenantId } : {}),
         },
       })
       
@@ -401,7 +410,7 @@ export async function createSubscription(
 export async function updateSubscription(
   input: UpdateSubscriptionInput
 ): Promise<void> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
   
   const { subscriptionId, ...updateData } = input
   
@@ -409,8 +418,12 @@ export async function updateSubscription(
     throw new Error('Abonman ID gereklidir')
   }
   
+  const tenantFilter = await getTenantFilter()
   const subscription = await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
+    where: { 
+      id: subscriptionId,
+      ...tenantFilter,
+    },
   })
   
   if (!subscription) {
@@ -426,7 +439,10 @@ export async function updateSubscription(
   }
   
   await prisma.subscription.update({
-    where: { id: subscriptionId },
+    where: { 
+      id: subscriptionId,
+      ...tenantFilter,
+    },
     data: updateData,
   })
   
@@ -448,14 +464,18 @@ export async function updateSubscription(
 export async function cancelSubscription(
   subscriptionId: string
 ): Promise<void> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
   
   if (!subscriptionId) {
     throw new Error('Abonman ID gereklidir')
   }
   
+  const tenantFilter = await getTenantFilter()
   const subscription = await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
+    where: { 
+      id: subscriptionId,
+      ...tenantFilter,
+    },
     include: {
       appointmentRequests: {
         where: {
@@ -513,7 +533,10 @@ export async function cancelSubscription(
       }),
     ] : []),
     prisma.subscription.update({
-      where: { id: subscriptionId },
+      where: { 
+        id: subscriptionId,
+        ...tenantFilter,
+      },
       data: {
         isActive: false,
       },
@@ -550,14 +573,18 @@ export async function cancelSubscription(
 export async function generateSubscriptionAppointments(
   subscriptionId: string
 ): Promise<number> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
   
   if (!subscriptionId) {
     throw new Error('Abonman ID gereklidir')
   }
   
+  const tenantFilter = await getTenantFilter()
   const subscription = await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
+    where: { 
+      id: subscriptionId,
+      ...tenantFilter,
+    },
   })
   
   if (!subscription) {
@@ -580,6 +607,7 @@ export async function generateSubscriptionAppointments(
       date: {
         gte: nowTRStr,
       },
+      ...tenantFilter,
     },
     select: {
       date: true,
@@ -615,6 +643,7 @@ export async function generateSubscriptionAppointments(
   const endTime = minutesToTime(endMinutes)
   
   let createdCount = 0
+  const tenantId = await getTenantIdForCreate()
   
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const date of newDates) {
@@ -640,6 +669,7 @@ export async function generateSubscriptionAppointments(
           requestedEndTime: endTime,
           status: 'approved',
           subscriptionId: subscription.id,
+          ...(tenantId ? { tenantId } : {}),
         },
       })
       
@@ -678,10 +708,14 @@ export async function generateSubscriptionAppointments(
 }
 
 export async function getSubscriptions(barberId?: string) {
-  const session = await requireAdmin()
+  const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
   
   return await prisma.subscription.findMany({
-    where: barberId ? { barberId } : {},
+    where: {
+      ...(barberId ? { barberId } : {}),
+      ...tenantFilter,
+    },
     include: {
       barber: {
         select: {
@@ -709,10 +743,14 @@ export async function getSubscriptions(barberId?: string) {
 }
 
 export async function getSubscriptionById(subscriptionId: string) {
-  const session = await requireAdmin()
+  const session = await requireAuth()
+  const tenantFilter = await getTenantFilter()
   
   return await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
+    where: { 
+      id: subscriptionId,
+      ...tenantFilter,
+    },
     include: {
       barber: {
         select: {

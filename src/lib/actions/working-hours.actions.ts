@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { AuditAction, Prisma } from '@prisma/client'
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth } from '@/lib/db-helpers'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { parseTimeToMinutes, overlaps } from '@/lib/time'
 import { dispatchSms } from '@/lib/sms/sms.dispatcher'
@@ -10,6 +10,7 @@ import { SmsEvent } from '@/lib/sms/sms.events'
 import { sendSms as sendSmsMessage } from '@/lib/sms/sms.service'
 import { getAdminPhoneSetting } from '@/lib/settings/settings-helpers'
 import { formatDateForSms } from '@/lib/time/formatDate'
+import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
 
 export interface WorkingHour {
   id: string
@@ -39,10 +40,14 @@ export interface CreateOverrideResult {
 }
 
 export async function getWorkingHours(barberId: string): Promise<WorkingHour[]> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const workingHours = await prisma.workingHour.findMany({
-    where: { barberId },
+    where: { 
+      barberId,
+      ...tenantFilter,
+    },
     orderBy: { dayOfWeek: 'asc' },
   })
 
@@ -56,7 +61,7 @@ export async function updateWorkingHours(
   endTime: string,
   isWorking: boolean
 ): Promise<void> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   if (dayOfWeek < 0 || dayOfWeek > 6) {
     throw new Error('Geçersiz gün')
@@ -79,6 +84,7 @@ export async function updateWorkingHours(
     throw new Error('Berber bulunamadı')
   }
 
+  const tenantId = await getTenantIdForCreate()
   await prisma.workingHour.upsert({
     where: {
       barberId_dayOfWeek: {
@@ -92,6 +98,7 @@ export async function updateWorkingHours(
       startTime,
       endTime,
       isWorking,
+      ...(tenantId ? { tenantId } : {}),
     },
     update: {
       startTime,
@@ -126,9 +133,13 @@ export async function getOverrides(
   barberId: string,
   date?: string
 ): Promise<WorkingHourOverride[]> {
-  await requireAdmin()
+  await requireAuth()
 
-  const where: any = { barberId }
+  const tenantFilter = await getTenantFilter()
+  const where: any = { 
+    barberId,
+    ...tenantFilter,
+  }
   if (date) {
     where.date = date
   }
@@ -157,7 +168,7 @@ export async function createOverride(
   reason?: string,
   sendSms?: boolean
 ): Promise<CreateOverrideResult> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   const startMinutes = parseTimeToMinutes(startTime)
   const endMinutes = parseTimeToMinutes(endTime)
@@ -171,8 +182,12 @@ export async function createOverride(
   const defaultReason = 'İşletme tarafından kapatılan saatler'
   const finalReason = reason && reason.trim() ? reason.trim() : defaultReason
 
+  const tenantFilter = await getTenantFilter()
   const barber = await prisma.barber.findUnique({
-    where: { id: barberId },
+    where: { 
+      id: barberId,
+      ...tenantFilter,
+    },
     select: { name: true },
   })
 
@@ -190,6 +205,7 @@ export async function createOverride(
       status: {
         in: ['pending', 'approved'],
       },
+      ...tenantFilter,
     },
     include: {
       appointmentSlots: true,
@@ -210,6 +226,7 @@ export async function createOverride(
     }
   })
 
+  const tenantId = await getTenantIdForCreate()
   const override = await prisma.workingHourOverride.create({
     data: {
       barberId,
@@ -217,6 +234,7 @@ export async function createOverride(
       startTime,
       endTime,
       reason: finalReason,
+      ...(tenantId ? { tenantId } : {}),
     },
   })
 
@@ -344,6 +362,7 @@ export async function createOverride(
         const adminMessage = `⚠️ ${formatDateForSms(date)} ${startTime}-${endTime} saatleri kapatıldı. ${cancelledCount} randevu iptal edildi.`
         try {
           await sendSmsMessage(adminPhone, adminMessage)
+          const tenantIdForSms = await getTenantIdForCreate()
           await prisma.smsLog.create({
             data: {
               to: adminPhone,
@@ -352,6 +371,7 @@ export async function createOverride(
               provider: 'vatansms',
               status: 'success',
               error: null,
+              ...(tenantIdForSms ? { tenantId: tenantIdForSms } : {}),
             },
           })
         } catch (error) {
@@ -374,7 +394,7 @@ export async function createOverride(
 export async function sendSmsForOverride(
   overrideId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
   const override = await prisma.workingHourOverride.findUnique({
     where: { id: overrideId },
@@ -400,6 +420,7 @@ export async function sendSmsForOverride(
       date: override.date,
       status: 'cancelled',
       cancelledBy: 'admin',
+      ...tenantFilter,
     },
     include: {
       appointmentSlots: true,
@@ -472,10 +493,14 @@ export async function sendSmsForOverride(
 }
 
 export async function deleteOverride(overrideId: string): Promise<void> {
-  const session = await requireAdmin()
+  const session = await requireAuth()
 
+  const tenantFilter = await getTenantFilter()
   const override = await prisma.workingHourOverride.findUnique({
-    where: { id: overrideId },
+    where: { 
+      id: overrideId,
+      ...tenantFilter,
+    },
     include: {
       barber: {
         select: { name: true },
@@ -488,7 +513,10 @@ export async function deleteOverride(overrideId: string): Promise<void> {
   }
 
   await prisma.workingHourOverride.delete({
-    where: { id: overrideId },
+    where: { 
+      id: overrideId,
+      ...tenantFilter,
+    },
   })
 
   try {

@@ -8,14 +8,30 @@ datasource db {
 }
 
 model Tenant {
-  id           String       @id @default(cuid())
-  name         String       @db.VarChar(255)
-  slug         String       @unique @db.VarChar(100)
-  customDomain String?      @unique @db.VarChar(255)
-  status       TenantStatus @default(active)
-  createdAt    DateTime     @default(now()) @db.DateTime(0)
-  updatedAt    DateTime     @default(now()) @updatedAt @db.DateTime(0)
-  users        User[]
+  id                      String                  @id @default(cuid())
+  name                    String                  @db.VarChar(255)
+  slug                    String                  @unique @db.VarChar(100)
+  customDomain            String?                 @unique @db.VarChar(255)
+  status                  TenantStatus            @default(active)
+  createdAt               DateTime                @default(now()) @db.DateTime(0)
+  updatedAt               DateTime                @default(now()) @updatedAt @db.DateTime(0)
+  users                   User[]
+  barbers                 Barber[]
+  appointmentRequests     AppointmentRequest[]
+  appointmentSlots        AppointmentSlot[]
+  ledgerEntries           LedgerEntry[]
+  expenses                Expense[]
+  recurringExpenses       RecurringExpense[]
+  smsLogs                 SmsLog[]
+  auditLogs               AuditLog[]
+  customerCancelOtps      CustomerCancelOtp[]
+  subscriptions           Subscription[]
+  systemJobLogs           SystemJobLog[]
+  bannedCustomers         BannedCustomer[]
+  appointmentWaitlists    AppointmentWaitlist[]
+  workingHours            WorkingHour[]
+  workingHourOverrides    WorkingHourOverride[]
+  appSettings             AppSetting[]
 
   @@map("tenants")
 }
@@ -83,6 +99,7 @@ model VerificationToken {
 
 model Barber {
   id                   String                @id @default(cuid())
+  tenantId             String
   name                 String                @db.VarChar(255)
   email                String                @unique @db.VarChar(255)
   password             String                @db.VarChar(255)
@@ -95,6 +112,7 @@ model Barber {
   isActive             Boolean               @default(true)
   createdAt            DateTime              @default(now()) @db.DateTime(0)
   updatedAt            DateTime              @updatedAt @db.DateTime(0)
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointmentRequests  AppointmentRequest[]
   appointmentSlots     AppointmentSlot[]
   waitlistRequests     AppointmentWaitlist[]
@@ -103,12 +121,14 @@ model Barber {
   workingHourOverrides WorkingHourOverride[]
   workingHours         WorkingHour[]
 
+  @@index([tenantId])
   @@index([email])
   @@map("barbers")
 }
 
 model WorkingHour {
   id        String   @id @default(cuid())
+  tenantId String
   barberId  String
   dayOfWeek Int
   startTime String   @db.VarChar(10)
@@ -116,29 +136,35 @@ model WorkingHour {
   isWorking Boolean  @default(true)
   createdAt DateTime @default(now()) @db.DateTime(0)
   updatedAt DateTime @updatedAt @db.DateTime(0)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   barber    Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
   @@unique([barberId, dayOfWeek])
+  @@index([tenantId])
   @@index([barberId])
   @@map("working_hours")
 }
 
 model WorkingHourOverride {
   id        String   @id @default(cuid())
+  tenantId String
   barberId  String
   date      String
   startTime String   @db.VarChar(10)
   endTime   String   @db.VarChar(10)
   reason    String?  @db.Text
   createdAt DateTime @default(now()) @db.DateTime(0)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   barber    Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([barberId, date])
   @@map("working_hour_overrides")
 }
 
 model AppointmentRequest {
   id                 String                   @id @default(cuid())
+  tenantId           String
   barberId           String
   customerName       String                   @db.VarChar(255)
   customerPhone      String                   @db.VarChar(20)
@@ -151,11 +177,13 @@ model AppointmentRequest {
   createdAt          DateTime                 @default(now()) @db.DateTime(0)
   cancelledBy        String?                  @db.VarChar(20)
   subscriptionId     String?
+  tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   barber             Barber                   @relation(fields: [barberId], references: [id], onDelete: Cascade)
   subscription       Subscription?            @relation(fields: [subscriptionId], references: [id])
   appointmentSlots   AppointmentSlot[]
   ledgerEntry        LedgerEntry?
 
+  @@index([tenantId])
   @@index([barberId, date])
   @@index([status])
   @@index([subscriptionId])
@@ -164,6 +192,7 @@ model AppointmentRequest {
 
 model AppointmentSlot {
   id                   String                @id @default(cuid())
+  tenantId             String
   barberId             String
   appointmentRequestId String?
   date                 String
@@ -171,9 +200,11 @@ model AppointmentSlot {
   endTime              String
   status               AppointmentSlotStatus @default(blocked)
   createdAt            DateTime              @default(now()) @db.DateTime(0)
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointmentRequest   AppointmentRequest?   @relation(fields: [appointmentRequestId], references: [id])
   barber               Barber                @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([barberId, date])
   @@index([barberId, date, status])
   @@index([status])
@@ -183,6 +214,7 @@ model AppointmentSlot {
 
 model LedgerEntry {
   id                   String              @id @default(cuid())
+  tenantId             String
   barberId             String
   appointmentRequestId String?             @unique
   date                 String
@@ -190,15 +222,18 @@ model LedgerEntry {
   description          String?             @db.Text
   amount               Decimal             @db.Decimal(10, 2)
   createdAt            DateTime            @default(now()) @db.DateTime(0)
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointmentRequest   AppointmentRequest? @relation(fields: [appointmentRequestId], references: [id])
   barber               Barber              @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([barberId, date])
   @@map("ledger_entries")
 }
 
 model Expense {
   id          String            @id @default(cuid())
+  tenantId    String
   date        String
   amount      Decimal           @db.Decimal(10, 2)
   category    ExpenseCategory
@@ -206,13 +241,16 @@ model Expense {
   createdAt   DateTime          @default(now()) @db.DateTime(0)
   sourceType  ExpenseSourceType @default(manual)
   sourceId    String?
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([date])
   @@map("expenses")
 }
 
 model RecurringExpense {
   id             String                     @id @default(cuid())
+  tenantId       String
   title          String                     @db.VarChar(255)
   amount         Decimal                    @db.Decimal(10, 2)
   category       ExpenseCategory
@@ -224,13 +262,16 @@ model RecurringExpense {
   isActive       Boolean                    @default(true)
   createdAt      DateTime                   @default(now()) @db.DateTime(0)
   updatedAt      DateTime                   @updatedAt @db.DateTime(0)
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([isActive, nextRunAt])
   @@map("recurring_expenses")
 }
 
 model SmsLog {
   id         String   @id @default(cuid())
+  tenantId   String
   to         String   @db.VarChar(50)
   message    String   @db.Text
   event      String   @db.VarChar(100)
@@ -239,7 +280,9 @@ model SmsLog {
   error      String?  @db.Text
   createdAt  DateTime @default(now()) @db.DateTime(0)
   eventLabel String?  @db.VarChar(255)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([event])
   @@index([createdAt])
   @@map("sms_logs")
@@ -247,6 +290,7 @@ model SmsLog {
 
 model AuditLog {
   id         String          @id @default(cuid())
+  tenantId   String
   actorType  AuditActorType
   actorId    String?
   action     AuditAction
@@ -255,7 +299,9 @@ model AuditLog {
   summary    String          @db.Text
   metadata   Json?
   createdAt  DateTime        @default(now()) @db.DateTime(0)
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([actorType])
   @@index([action])
   @@index([entityType])
@@ -265,13 +311,16 @@ model AuditLog {
 
 model CustomerCancelOtp {
   id            String   @id @default(cuid())
+  tenantId      String
   phone         String   @db.VarChar(20)
   code          String   @db.VarChar(10)
   appointmentId String?  @db.VarChar(30)
   expiresAt     DateTime @db.DateTime(0)
   used          Boolean  @default(false)
   createdAt     DateTime @default(now()) @db.DateTime(0)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([phone])
   @@index([appointmentId])
   @@index([expiresAt])
@@ -279,16 +328,21 @@ model CustomerCancelOtp {
 }
 
 model AppSetting {
-  key       String   @id @db.VarChar(64)
+  tenantId  String   @db.VarChar(191)
+  key       String   @db.VarChar(64)
   value     Json
   updatedAt DateTime @updatedAt @db.DateTime(0)
   createdAt DateTime @default(now()) @db.DateTime(0)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@id([tenantId, key])
+  @@index([tenantId])
   @@map("app_settings")
 }
 
 model Subscription {
   id                  String                     @id @default(cuid())
+  tenantId            String
   barberId            String
   customerName        String                     @db.VarChar(255)
   customerPhone       String                     @db.VarChar(20)
@@ -302,9 +356,11 @@ model Subscription {
   isActive            Boolean                    @default(true)
   createdAt           DateTime                   @default(now()) @db.DateTime(0)
   updatedAt           DateTime                   @updatedAt @db.DateTime(0)
+  tenant              Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointmentRequests AppointmentRequest[]
   barber              Barber                     @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([barberId])
   @@index([customerPhone])
   @@index([isActive])
@@ -313,10 +369,13 @@ model Subscription {
 
 model SystemJobLog {
   id      String   @id @default(cuid())
+  tenantId String?
   jobName String   @db.VarChar(100)
   ranAt   DateTime @default(now()) @db.DateTime(0)
   meta    Json?
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([jobName])
   @@index([ranAt])
   @@map("system_job_logs")
@@ -324,6 +383,7 @@ model SystemJobLog {
 
 model BannedCustomer {
   id            String    @id @default(cuid())
+  tenantId      String
   customerPhone String    @unique @db.VarChar(20)
   customerName  String    @db.VarChar(255)
   reason        String?   @db.Text
@@ -333,7 +393,9 @@ model BannedCustomer {
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now()) @db.DateTime(0)
   updatedAt     DateTime  @updatedAt @db.DateTime(0)
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([customerPhone])
   @@index([isActive])
   @@map("banned_customers")
@@ -341,6 +403,7 @@ model BannedCustomer {
 
 model AppointmentWaitlist {
   id            String    @id @default(cuid()) @db.VarChar(30)
+  tenantId      String
   customerPhone String    @db.VarChar(20)
   customerName  String    @db.VarChar(255)
   barberId      String    @db.VarChar(30)
@@ -349,8 +412,10 @@ model AppointmentWaitlist {
   status        String    @default("active") @db.VarChar(20)
   createdAt     DateTime  @default(now())
   notifiedAt    DateTime?
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   barber        Barber    @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@unique([customerPhone, barberId, preferredDate])
   @@index([barberId, preferredDate, status])
   @@index([barberId])

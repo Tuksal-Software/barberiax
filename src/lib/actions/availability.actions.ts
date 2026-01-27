@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { parseTimeToMinutes, minutesToTime, overlaps } from '@/lib/time'
 import { getNowUTC } from '@/lib/time'
+import { getTenantFilter } from '@/lib/db-helpers'
 
 export interface AvailableTimeSlot {
     startTime: string
@@ -30,8 +31,12 @@ export async function getAvailableTimeSlotsV2(
 
     const dayOfWeek = dateObj.getDay()
 
+    const tenantFilter = await getTenantFilter()
     const barber = await prisma.barber.findUnique({
-        where: { id: barberId },
+        where: { 
+            id: barberId,
+            ...tenantFilter,
+        },
         select: { slotDuration: true, isActive: true },
     })
 
@@ -66,6 +71,7 @@ export async function getAvailableTimeSlotsV2(
                 barberId,
                 date,
                 status: 'blocked',
+                ...tenantFilter,
             },
             select: {
                 startTime: true,
@@ -76,6 +82,7 @@ export async function getAvailableTimeSlotsV2(
             where: {
                 barberId,
                 date,
+                ...tenantFilter,
             },
             select: {
                 startTime: true,
@@ -163,8 +170,12 @@ export async function getCustomerTimeButtonsV2(
 
     const dayOfWeek = dateObj.getDay()
 
+    const tenantFilter = await getTenantFilter()
     const barber = await prisma.barber.findUnique({
-        where: { id: barberId },
+        where: { 
+            id: barberId,
+            ...tenantFilter,
+        },
         select: { isActive: true },
     })
 
@@ -200,6 +211,7 @@ export async function getCustomerTimeButtonsV2(
                 status: {
                     in: ['pending', 'approved'],
                 },
+                ...tenantFilter,
             },
             select: {
                 requestedStartTime: true,
@@ -216,6 +228,7 @@ export async function getCustomerTimeButtonsV2(
                 barberId,
                 date,
                 status: 'blocked',
+                ...tenantFilter,
             },
             select: {
                 startTime: true,
@@ -226,6 +239,7 @@ export async function getCustomerTimeButtonsV2(
             where: {
                 barberId,
                 date,
+                ...tenantFilter,
             },
             select: {
                 startTime: true,

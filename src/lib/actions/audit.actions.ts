@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/actions/auth.actions'
+import { requireAuth, getTenantFilter } from '@/lib/db-helpers'
 
 export interface AuditLogFilters {
   actorType?: 'customer' | 'admin' | 'system' | 'all'
@@ -45,7 +45,8 @@ export interface AuditLogStats {
 }
 
 export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLogItem[]> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const {
     actorType,
@@ -58,7 +59,9 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<Audit
     offset = 0,
   } = filters
 
-  const where: any = {}
+  const where: any = {
+    ...tenantFilter,
+  }
 
   if (actorType && actorType !== 'all') {
     where.actorType = actorType
@@ -115,16 +118,21 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<Audit
 }
 
 export async function getAuditLogStats(): Promise<AuditLogStats> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const [total, byActorType, byEntityType] = await Promise.all([
-    prisma.auditLog.count(),
+    prisma.auditLog.count({
+      where: tenantFilter,
+    }),
     prisma.auditLog.groupBy({
       by: ['actorType'],
+      where: tenantFilter,
       _count: true,
     }),
     prisma.auditLog.groupBy({
       by: ['entityType'],
+      where: tenantFilter,
       _count: true,
     }),
   ])
@@ -173,7 +181,8 @@ export interface TodayAuditSummary {
 }
 
 export async function getTodayAuditSummary(): Promise<TodayAuditSummary> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -181,6 +190,7 @@ export async function getTodayAuditSummary(): Promise<TodayAuditSummary> {
   tomorrow.setDate(tomorrow.getDate() + 1)
 
   const where = {
+    ...tenantFilter,
     createdAt: {
       gte: today,
       lt: tomorrow,
@@ -247,9 +257,13 @@ export interface RecentAuditActivity {
 }
 
 export async function getRecentAuditActivities(limit: number = 10): Promise<RecentAuditActivity[]> {
-  await requireAdmin()
+  await requireAuth()
+  const tenantFilter = await getTenantFilter()
 
   const logs = await prisma.auditLog.findMany({
+    where: {
+      ...tenantFilter,
+    },
     take: limit,
     orderBy: {
       createdAt: 'desc',
