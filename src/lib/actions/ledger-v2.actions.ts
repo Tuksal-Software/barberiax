@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
-import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 
 export interface GetLedgerCandidatesParams {
   barberId?: string
@@ -52,9 +52,6 @@ export async function getLedgerCandidates(
   const tenantFilter = await getTenantFilter()
 
   let finalBarberId = barberId
-  if (session.role === 'barber') {
-    finalBarberId = session.userId
-  }
 
   const where: Prisma.AppointmentRequestWhereInput = {
     status: 'done',
@@ -203,12 +200,6 @@ export async function upsertLedgerForAppointment(
       }
     }
 
-    if (session.role === 'barber' && appointmentRequest.barberId !== session.userId) {
-      return {
-        success: false,
-        error: 'Bu randevu için yetkiniz yok',
-      }
-    }
 
     const existingEntry = await prisma.ledgerEntry.findUnique({
       where: {
@@ -223,7 +214,7 @@ export async function upsertLedgerForAppointment(
       description: existingEntry.description,
     } : null
 
-    const tenantId = await getTenantIdForCreate()
+    const { tenantId } = await getCurrentTenant()
     const ledgerEntry = await prisma.ledgerEntry.upsert({
       where: {
         appointmentRequestId: appointmentRequest.id,
@@ -236,7 +227,7 @@ export async function upsertLedgerForAppointment(
         customerName: appointmentRequest.customerName,
         amount: new Prisma.Decimal(amount),
         description: description || null,
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
       update: {
         amount: new Prisma.Decimal(amount),
@@ -307,12 +298,6 @@ export async function deleteLedgerEntry(
       }
     }
 
-    if (session.role === 'barber' && ledgerEntry.appointmentRequest?.barberId !== session.userId) {
-      return {
-        success: false,
-        error: 'Bu kayıt için yetkiniz yok',
-      }
-    }
 
     const beforeDelete = {
       id: ledgerEntry.id,
@@ -366,9 +351,6 @@ export async function getLedgerSummary(
   const { barberId } = params
 
   let finalBarberId = barberId
-  if (session.role === 'barber') {
-    finalBarberId = session.userId
-  }
 
   const tenantFilter = await getTenantFilter()
   const where: Prisma.AppointmentRequestWhereInput = {

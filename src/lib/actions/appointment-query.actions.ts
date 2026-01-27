@@ -30,16 +30,9 @@ export async function getPendingAppointmentRequests(): Promise<AppointmentReques
   const session = await requireAuth()
   const tenantFilter = await getTenantFilter()
 
-  const where: {
-    status: 'pending'
-    barberId?: string
-  } = {
-    status: 'pending',
+  const where = {
+    status: 'pending' as const,
     ...tenantFilter,
-  }
-
-  if (session.role === 'barber') {
-    where.barberId = session.userId
   }
 
   const requests = await prisma.appointmentRequest.findMany({
@@ -80,14 +73,8 @@ export async function getRecentAppointments(limit: number = 5): Promise<Appointm
   const session = await requireAuth()
   const tenantFilter = await getTenantFilter()
 
-  const where: {
-    barberId?: string
-  } = {
+  const where = {
     ...tenantFilter,
-  }
-
-  if (session.role === 'barber') {
-    where.barberId = session.userId
   }
 
   const requests = await prisma.appointmentRequest.findMany({
@@ -136,14 +123,8 @@ export async function getAllAppointmentRequests(): Promise<AppointmentRequestLis
   const session = await requireAuth()
   const tenantFilter = await getTenantFilter()
 
-  const where: {
-    barberId?: string
-  } = {
+  const where = {
     ...tenantFilter,
-  }
-
-  if (session.role === 'barber') {
-    where.barberId = session.userId
   }
 
   const requests = await prisma.appointmentRequest.findMany({
@@ -206,11 +187,8 @@ export async function getCalendarAppointments(): Promise<CalendarAppointment[]> 
   const session = await requireAuth()
   const tenantFilter = await getTenantFilter()
 
-  const where: { barberId?: string } = {
+  const where = {
     ...tenantFilter,
-  }
-  if (session.role === 'barber') {
-    where.barberId = session.userId
   }
 
   const requests = await prisma.appointmentRequest.findMany({

@@ -101,6 +101,7 @@ async function sendReminderSms(
   date: string,
   startTime: string,
   reminderType: ReminderType,
+  tenantId: string,
   hoursUntil?: number
 ): Promise<void> {
   const message = createReminderMessage(reminderType, customerName, date, startTime, customerPhone, hoursUntil)
@@ -119,6 +120,7 @@ async function sendReminderSms(
         provider: 'vatansms',
         status: 'success',
         error: null,
+        tenantId,
       },
     })
   } catch (error) {
@@ -133,6 +135,7 @@ async function sendReminderSms(
         provider: 'vatansms',
         status: 'error',
         error: error instanceof Error ? error.message : String(error),
+        tenantId,
       },
     })
     throw error
@@ -173,6 +176,7 @@ async function main() {
       customerPhone: true,
       date: true,
       requestedStartTime: true,
+      tenantId: true,
     },
   })
   
@@ -222,7 +226,8 @@ async function main() {
             appointment.customerName,
             formattedDate,
             dbTime,
-            REMINDER_TYPES.HOUR_2
+            REMINDER_TYPES.HOUR_2,
+            appointment.tenantId
           )
           reminders2hSent++
           console.log(`[Appointment Reminders] 2 saat hatırlatması gönderildi: ${appointment.id} - ${appointment.customerPhone}`)
@@ -242,7 +247,8 @@ async function main() {
             appointment.customerName,
             formattedDate,
             dbTime,
-            REMINDER_TYPES.HOUR_1
+            REMINDER_TYPES.HOUR_1,
+            appointment.tenantId
           )
           reminders1hSent++
           console.log(`[Appointment Reminders] 1 saat hatırlatması gönderildi: ${appointment.id} - ${appointment.customerPhone}`)
@@ -278,6 +284,7 @@ async function main() {
               formattedDate,
               dbTime,
               REMINDER_TYPES.CUSTOM_CANCEL,
+              appointment.tenantId,
               customReminderHours
             )
             remindersCustomSent++

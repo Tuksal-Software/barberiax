@@ -89,7 +89,7 @@ export async function createRecurringExpense(
         nextRunAt,
         endDate: endDate || null,
         isActive: true,
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 

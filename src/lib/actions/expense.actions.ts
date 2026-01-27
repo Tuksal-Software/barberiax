@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/db-helpers'
 import { Prisma } from '@prisma/client'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { AuditAction } from '@prisma/client'
-import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 
 export interface CreateExpenseInput {
   date: string
@@ -49,7 +49,7 @@ export async function createExpense(
     }
 
     const session = await requireAuth()
-    const tenantId = await getTenantIdForCreate()
+    const { tenantId } = await getCurrentTenant()
 
     const expense = await prisma.expense.create({
       data: {
@@ -57,7 +57,7 @@ export async function createExpense(
         amount: new Prisma.Decimal(amount),
         category,
         description: description || null,
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 

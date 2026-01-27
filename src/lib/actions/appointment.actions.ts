@@ -11,7 +11,7 @@ import { SmsEvent } from '@/lib/sms/sms.events'
 import type { AppointmentApprovedPayload } from '@/lib/sms/sms.templates'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { isCustomerBanned } from './banned-customer.actions'
-import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 
 export interface CreateAppointmentRequestInput {
   barberId: string
@@ -185,14 +185,10 @@ export async function createAppointmentRequest(
     return { error: 'Aktif bir randevunuz bulunduğu için yeni randevu alamazsınız.' }
   }
 
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   const appointmentRequest = await prisma.appointmentRequest.create({
     data: {
-      barber: {
-        connect: {
-          id: barberId,
-        },
-      },
+      barberId,
       customerName,
       customerPhone,
       customerEmail: customerEmail || null,
@@ -201,7 +197,7 @@ export async function createAppointmentRequest(
       requestedEndTime: finalEndTime,
       ...(serviceType ? { serviceType } : {}),
       status: 'pending',
-      ...(tenantId ? { tenantId } : {}),
+      tenantId,
     },
   })
 
@@ -327,7 +323,7 @@ export async function approveAppointmentRequest(
       }
     }
 
-    const tenantId = await getTenantIdForCreate()
+    const { tenantId } = await getCurrentTenant()
     await tx.appointmentSlot.create({
       data: {
         barberId: appointmentRequest.barberId,
@@ -336,7 +332,7 @@ export async function approveAppointmentRequest(
         startTime: approvedStartTime,
         endTime: approvedEndTime,
         status: 'blocked',
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 
@@ -537,7 +533,7 @@ export async function cancelAppointmentRequest(
 
         try {
           await sendSms(fullAppointment.customerPhone, customerMessage)
-          const tenantId = await getTenantIdForCreate()
+          const { tenantId } = await getCurrentTenant()
           try {
             await prisma.smsLog.create({
               data: {
@@ -547,14 +543,14 @@ export async function cancelAppointmentRequest(
                 provider: 'vatansms',
                 status: 'success',
                 error: null,
-                ...(tenantId ? { tenantId } : {}),
+                tenantId,
               },
             })
           } catch (error) {
             console.error('SMS log error:', error)
           }
         } catch (smsError) {
-          const tenantId = await getTenantIdForCreate()
+          const { tenantId } = await getCurrentTenant()
           try {
             await prisma.smsLog.create({
               data: {
@@ -564,7 +560,7 @@ export async function cancelAppointmentRequest(
                 provider: 'vatansms',
                 status: 'error',
                 error: smsError instanceof Error ? smsError.message : String(smsError),
-                ...(tenantId ? { tenantId } : {}),
+                tenantId,
               },
             })
           } catch (error) {
@@ -578,7 +574,7 @@ export async function cancelAppointmentRequest(
           
           try {
             await sendSms(adminPhone, adminMessage)
-            const tenantId = await getTenantIdForCreate()
+            const { tenantId } = await getCurrentTenant()
             try {
               await prisma.smsLog.create({
                 data: {
@@ -588,14 +584,14 @@ export async function cancelAppointmentRequest(
                   provider: 'vatansms',
                   status: 'success',
                   error: null,
-                  ...(tenantId ? { tenantId } : {}),
+                  tenantId,
                 },
               })
             } catch (error) {
               console.error('SMS log error:', error)
             }
           } catch (smsError) {
-            const tenantId = await getTenantIdForCreate()
+            const { tenantId } = await getCurrentTenant()
             try {
               await prisma.smsLog.create({
                 data: {
@@ -605,7 +601,7 @@ export async function cancelAppointmentRequest(
                   provider: 'vatansms',
                   status: 'error',
                   error: smsError instanceof Error ? smsError.message : String(smsError),
-                  ...(tenantId ? { tenantId } : {}),
+                  tenantId,
                 },
               })
             } catch (error) {
@@ -718,14 +714,10 @@ export async function createAdminAppointment(
       }
     }
 
-    const tenantId = await getTenantIdForCreate()
+    const { tenantId } = await getCurrentTenant()
     const appointmentRequest = await tx.appointmentRequest.create({
       data: {
-        barber: {
-          connect: {
-            id: barberId,
-          },
-        },
+        barberId,
         customerName,
         customerPhone,
         customerEmail: customerEmail || null,
@@ -733,7 +725,7 @@ export async function createAdminAppointment(
         requestedStartTime,
         requestedEndTime: approvedEndTime,
         status: 'approved',
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 
@@ -745,7 +737,7 @@ export async function createAdminAppointment(
         startTime: requestedStartTime,
         endTime: approvedEndTime,
         status: 'blocked',
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 

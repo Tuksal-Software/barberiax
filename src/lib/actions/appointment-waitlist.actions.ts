@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { parseTimeToMinutes } from "@/lib/time"
-import { getTenantFilter, getCurrentTenant, getTenantIdForCreate } from "@/lib/db-helpers"
+import { getTenantFilter, getCurrentTenant } from "@/lib/db-helpers"
 
 export interface WaitlistRequest {
   id: string
@@ -146,7 +146,7 @@ export async function createWaitlistRequest(data: {
       preferredDate,
       timeRangeType,
       status: 'active',
-      ...(tenantId ? { tenantId } : {}),
+      tenantId,
     }
   })
 
@@ -198,7 +198,7 @@ export async function notifyWaitingCustomers(data: {
       const { sendSms } = await import('@/lib/sms/sms.service')
       const siteUrl = process.env.SITE_URL || 'https://www.themenshair.com'
       const message = `Merhaba ${request.customerName}, ${date} tarihinde ${cancelledTime} saati açıldı! Hemen randevu almak için: ${siteUrl}`
-      const tenantId = await getTenantIdForCreate()
+      const { tenantId } = await getCurrentTenant()
       
       try {
         await sendSms(request.customerPhone, message)
@@ -210,7 +210,7 @@ export async function notifyWaitingCustomers(data: {
             event: 'WAITLIST_NOTIFICATION',
             provider: 'vatansms',
             status: 'success',
-            ...(tenantId ? { tenantId } : {}),
+            tenantId,
           }
         })
       } catch (error) {
@@ -224,7 +224,7 @@ export async function notifyWaitingCustomers(data: {
             provider: 'vatansms',
             status: 'error',
             error: error instanceof Error ? error.message : String(error),
-            ...(tenantId ? { tenantId } : {}),
+            tenantId,
           }
         })
       }

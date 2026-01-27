@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs'
 import { createAppointmentDateTimeTR } from '@/lib/time/appointmentDateTime'
 import { getNowUTC } from '@/lib/time'
 import { Prisma } from '@prisma/client'
-import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 
 export interface BarberListItem {
   id: string
@@ -157,7 +157,7 @@ export async function createBarber(
 
       const password = generateRandomPassword()
       const hashedPassword = await bcrypt.hash(password, 10)
-      const tenantId = await getTenantIdForCreate()
+      const { tenantId } = await getCurrentTenant()
 
       const barber = await prisma.barber.create({
         data: {
@@ -167,7 +167,7 @@ export async function createBarber(
           role: 'barber',
           experience: experience || 0,
           isActive: true,
-          ...(tenantId ? { tenantId } : {}),
+          tenantId,
         },
       })
 
@@ -198,7 +198,7 @@ export async function createBarber(
 
     const password = generateRandomPassword()
     const hashedPassword = await bcrypt.hash(password, 10)
-    const tenantId = await getTenantIdForCreate()
+    const { tenantId } = await getCurrentTenant()
 
     const barber = await prisma.barber.create({
       data: {
@@ -208,7 +208,7 @@ export async function createBarber(
         role: 'barber',
         experience: experience || 0,
         isActive: true,
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
 

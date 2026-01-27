@@ -152,6 +152,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
           appointmentId: appointment.id,
           expiresAt,
           used: false,
+          tenantId: appointment.tenantId,
         },
       })
 
@@ -182,6 +183,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
               provider: 'vatansms',
               status: 'success',
               error: null,
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -209,6 +211,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
               provider: 'vatansms',
               status: 'error',
               error: smsError instanceof Error ? smsError.message : String(smsError),
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -269,6 +272,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
           appointmentId: appointment.id,
           expiresAt,
           used: false,
+          tenantId: appointment.tenantId,
         },
       })
 
@@ -299,6 +303,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
               provider: 'vatansms',
               status: 'success',
               error: null,
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -326,6 +331,7 @@ export async function requestCancelOtp(phone: string): Promise<{ success: boolea
               provider: 'vatansms',
               status: 'error',
               error: smsError instanceof Error ? smsError.message : String(smsError),
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -599,6 +605,7 @@ export async function confirmCancelOtp(phone: string, code: string): Promise<{ s
             provider: 'vatansms',
             status: 'success',
             error: null,
+            tenantId: appointment.tenantId,
           },
         })
       } catch (error) {
@@ -626,6 +633,7 @@ export async function confirmCancelOtp(phone: string, code: string): Promise<{ s
             provider: 'vatansms',
             status: 'error',
             error: smsError instanceof Error ? smsError.message : String(smsError),
+            tenantId: appointment.tenantId,
           },
         })
       } catch (error) {
@@ -662,6 +670,7 @@ export async function confirmCancelOtp(phone: string, code: string): Promise<{ s
               provider: 'vatansms',
               status: 'success',
               error: null,
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -689,6 +698,7 @@ export async function confirmCancelOtp(phone: string, code: string): Promise<{ s
               provider: 'vatansms',
               status: 'error',
               error: smsError instanceof Error ? smsError.message : String(smsError),
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -752,6 +762,22 @@ export async function requestViewAppointmentsOtp(phone: string): Promise<{ succe
     const nowTR = getNowUTC()
     const expiresAt = new Date(nowTR.getTime() + 10 * 60 * 1000)
 
+    const lastAppointment = await prisma.appointmentRequest.findFirst({
+      where: {
+        customerPhone: normalizedPhone,
+      },
+      select: {
+        tenantId: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    if (!lastAppointment) {
+      return { success: false, error: 'Randevu bulunamadı' }
+    }
+
     await prisma.customerCancelOtp.deleteMany({
       where: {
         phone: normalizedPhone,
@@ -766,6 +792,7 @@ export async function requestViewAppointmentsOtp(phone: string): Promise<{ succe
         appointmentId: null,
         expiresAt,
         used: false,
+        tenantId: lastAppointment.tenantId,
       },
     })
 
@@ -782,6 +809,7 @@ export async function requestViewAppointmentsOtp(phone: string): Promise<{ succe
           provider: 'vatansms',
           status: 'success',
           error: null,
+          tenantId: lastAppointment.tenantId,
         },
       })
 
@@ -805,6 +833,7 @@ export async function requestViewAppointmentsOtp(phone: string): Promise<{ succe
           provider: 'vatansms',
           status: 'error',
           error: smsError instanceof Error ? smsError.message : String(smsError),
+          tenantId: lastAppointment.tenantId,
         },
       })
 

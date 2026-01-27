@@ -44,8 +44,8 @@ export async function requireAuth(): Promise<Session> {
   return {
     userId: user.id,
     role: user.role as 'super_admin' | 'tenant_owner',
-    email: user.email,
-    name: user.name,
+    email: user.email || '',
+    name: user.name || '',
   }
 }
 
@@ -59,12 +59,3 @@ export async function getTenantFilter(): Promise<{ tenantId: string } | {}> {
   return { tenantId }
 }
 
-export async function getTenantIdForCreate(): Promise<string | undefined> {
-  const { tenantId, isSuperAdmin } = await getCurrentTenant()
-  
-  if (isSuperAdmin) {
-    return undefined
-  }
-  
-  return tenantId
-}

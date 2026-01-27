@@ -21,14 +21,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const todayEnd = endOfDay(today)
   const tenantFilter = await getTenantFilter()
 
-  const baseWhere = session.role === 'barber' ? { barberId: session.userId } : {}
-
   const todayDateStr = format(today, 'yyyy-MM-dd')
 
   const [pending, approvedToday, approvedTotal, activeBarbers, subscriptionCustomers] = await Promise.all([
     prisma.appointmentRequest.count({
       where: {
-        ...baseWhere,
         status: 'pending',
         subscriptionId: null,
         ...tenantFilter,
@@ -36,7 +33,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }),
     prisma.appointmentRequest.count({
       where: {
-        ...baseWhere,
         status: 'approved',
         date: todayDateStr,
         subscriptionId: null,
@@ -45,7 +41,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }),
     prisma.appointmentRequest.count({
       where: {
-        ...baseWhere,
         status: 'approved',
         subscriptionId: null,
         ...tenantFilter,
@@ -60,7 +55,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }),
     prisma.appointmentRequest.findMany({
       where: {
-        ...baseWhere,
         subscriptionId: { not: null },
         status: {
           in: ['pending', 'approved'],
@@ -96,11 +90,8 @@ export async function getWeeklyAppointments(): Promise<WeeklyAppointmentData[]> 
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 })
   const tenantFilter = await getTenantFilter()
 
-  const baseWhere = session.role === 'barber' ? { barberId: session.userId } : {}
-
   const appointments = await prisma.appointmentRequest.findMany({
     where: {
-      ...baseWhere,
       date: {
         gte: format(weekStart, 'yyyy-MM-dd'),
         lte: format(weekEnd, 'yyyy-MM-dd'),
@@ -146,12 +137,10 @@ export interface AppointmentStatusStats {
 export async function getAppointmentStatusStats(): Promise<AppointmentStatusStats> {
   const session = await requireAuth()
   const tenantFilter = await getTenantFilter()
-  const baseWhere = session.role === 'barber' ? { barberId: session.userId } : {}
 
   const [approved, cancelled] = await Promise.all([
     prisma.appointmentRequest.count({
       where: {
-        ...baseWhere,
         status: 'approved',
         subscriptionId: null,
         ...tenantFilter,
@@ -159,7 +148,6 @@ export async function getAppointmentStatusStats(): Promise<AppointmentStatusStat
     }),
     prisma.appointmentRequest.count({
       where: {
-        ...baseWhere,
         status: 'cancelled',
         subscriptionId: null,
         ...tenantFilter,

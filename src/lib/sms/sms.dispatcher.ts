@@ -4,11 +4,26 @@ import { sendSms } from './sms.service'
 import { prisma } from '@/lib/prisma'
 import { auditLog } from '@/lib/audit/audit.logger'
 import { getAdminPhoneSetting, getSmsSenderSetting } from '@/lib/settings/settings-helpers'
+import { getCurrentTenant } from '@/lib/db-helpers'
 
 type SmsPayload = AppointmentCreatedPayload | AppointmentApprovedPayload | AppointmentCancelledPendingPayload | SubscriptionCreatedPayload | SubscriptionCancelledPayload | AdminAppointmentCreatedPayload
 
-async function logSms(to: string, message: string, event: SmsEvent, status: 'success' | 'error', error?: string): Promise<void> {
+async function logSms(to: string, message: string, event: SmsEvent, status: 'success' | 'error', error?: string, tenantId?: string): Promise<void> {
   try {
+    let finalTenantId = tenantId
+
+    if (!finalTenantId) {
+      try {
+        const tenant = await getCurrentTenant()
+        finalTenantId = tenant.tenantId
+      } catch {
+      }
+    }
+
+    if (!finalTenantId) {
+      return
+    }
+
     await prisma.smsLog.create({
       data: {
         to,
@@ -17,6 +32,7 @@ async function logSms(to: string, message: string, event: SmsEvent, status: 'suc
         provider: 'vatansms',
         status,
         error: error || null,
+        tenantId: finalTenantId,
       },
     })
 
@@ -52,6 +68,13 @@ export async function dispatchSms(
   payload: SmsPayload
 ): Promise<void> {
   try {
+    let tenantId: string | undefined
+    try {
+      const tenant = await getCurrentTenant()
+      tenantId = tenant.tenantId
+    } catch {
+    }
+
     if (event === SmsEvent.AppointmentCreated) {
       const customerTemplate = getSmsTemplate(event, 'customer')
       const adminTemplate = getSmsTemplate(event, 'admin')
@@ -64,8 +87,8 @@ export async function dispatchSms(
       if (payload.customerPhone && payload.customerPhone.trim()) {
         promises.push(
           sendSms(payload.customerPhone, customerMessage)
-            .then(() => logSms(payload.customerPhone, customerMessage, event, 'success'))
-            .catch((error) => logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error)))
+            .then(() => logSms(payload.customerPhone, customerMessage, event, 'success', undefined, tenantId))
+            .catch((error) => logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId))
         )
       } else {
         console.warn('[SMS Dispatcher] Customer phone is empty, skipping SMS')
@@ -75,8 +98,8 @@ export async function dispatchSms(
       if (adminPhone && adminPhone.trim()) {
         promises.push(
           sendSms(adminPhone, adminMessage)
-            .then(() => logSms(adminPhone, adminMessage, event, 'success'))
-            .catch((error) => logSms(adminPhone, adminMessage, event, 'error', error instanceof Error ? error.message : String(error)))
+            .then(() => logSms(adminPhone, adminMessage, event, 'success', undefined, tenantId))
+            .catch((error) => logSms(adminPhone, adminMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId))
         )
       } else {
         console.warn('[SMS Dispatcher] Admin phone is not set, skipping admin SMS')
@@ -90,9 +113,9 @@ export async function dispatchSms(
       if (payload.customerPhone && payload.customerPhone.trim()) {
         try {
           await sendSms(payload.customerPhone, customerMessage)
-          await logSms(payload.customerPhone, customerMessage, event, 'success')
+          await logSms(payload.customerPhone, customerMessage, event, 'success', undefined, tenantId)
         } catch (error) {
-          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error))
+          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId)
         }
       } else {
         console.warn('[SMS Dispatcher] Customer phone is empty, skipping SMS')
@@ -104,9 +127,9 @@ export async function dispatchSms(
       if (payload.customerPhone && payload.customerPhone.trim()) {
         try {
           await sendSms(payload.customerPhone, customerMessage)
-          await logSms(payload.customerPhone, customerMessage, event, 'success')
+          await logSms(payload.customerPhone, customerMessage, event, 'success', undefined, tenantId)
         } catch (error) {
-          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error))
+          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId)
         }
       } else {
         console.warn('[SMS Dispatcher] Customer phone is empty, skipping SMS')
@@ -118,9 +141,9 @@ export async function dispatchSms(
       if (payload.customerPhone && payload.customerPhone.trim()) {
         try {
           await sendSms(payload.customerPhone, customerMessage)
-          await logSms(payload.customerPhone, customerMessage, event, 'success')
+          await logSms(payload.customerPhone, customerMessage, event, 'success', undefined, tenantId)
         } catch (error) {
-          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error))
+          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId)
         }
       } else {
         console.warn('[SMS Dispatcher] Customer phone is empty, skipping SMS')
@@ -132,9 +155,9 @@ export async function dispatchSms(
       if (payload.customerPhone && payload.customerPhone.trim()) {
         try {
           await sendSms(payload.customerPhone, customerMessage)
-          await logSms(payload.customerPhone, customerMessage, event, 'success')
+          await logSms(payload.customerPhone, customerMessage, event, 'success', undefined, tenantId)
         } catch (error) {
-          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error))
+          await logSms(payload.customerPhone, customerMessage, event, 'error', error instanceof Error ? error.message : String(error), tenantId)
         }
       } else {
         console.warn('[SMS Dispatcher] Customer phone is empty, skipping SMS')
@@ -153,6 +176,17 @@ export async function sendSmsForEvent(params: {
   console.log('[sendSmsForEvent] Called with:', params)
   const { event, to, payload } = params
   
+  let tenantId: string | undefined
+  try {
+    const tenant = await getCurrentTenant()
+    tenantId = tenant.tenantId
+  } catch {
+  }
+
+  if (!tenantId) {
+    return
+  }
+  
   try {
     const customerTemplate = getSmsTemplate(event, 'customer')
     const message = customerTemplate(payload)
@@ -169,6 +203,7 @@ export async function sendSmsForEvent(params: {
         provider: 'vatansms',
         status: 'success',
         error: null,
+        tenantId,
       },
     })
     
@@ -183,6 +218,7 @@ export async function sendSmsForEvent(params: {
         provider: 'vatansms',
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
+        tenantId,
       },
     })
     throw error

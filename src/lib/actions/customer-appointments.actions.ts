@@ -180,6 +180,7 @@ export async function cancelAppointmentByCustomer(
             provider: 'vatansms',
             status: 'success',
             error: null,
+            tenantId: appointment.tenantId,
           },
         })
       } catch (error) {
@@ -195,6 +196,7 @@ export async function cancelAppointmentByCustomer(
             provider: 'vatansms',
             status: 'error',
             error: smsError instanceof Error ? smsError.message : String(smsError),
+            tenantId: appointment.tenantId,
           },
         })
       } catch (error) {
@@ -217,6 +219,7 @@ export async function cancelAppointmentByCustomer(
               provider: 'vatansms',
               status: 'success',
               error: null,
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {
@@ -232,6 +235,7 @@ export async function cancelAppointmentByCustomer(
               provider: 'vatansms',
               status: 'error',
               error: smsError instanceof Error ? smsError.message : String(smsError),
+              tenantId: appointment.tenantId,
             },
           })
         } catch (error) {

@@ -5,7 +5,7 @@ import { AuditAction, Prisma, SubscriptionRecurrenceType } from '@prisma/client'
 import { parseTimeToMinutes, minutesToTime, overlaps } from '@/lib/time'
 import { createAppointmentDateTimeTR } from '@/lib/time/appointmentDateTime'
 import { getNowUTC } from '@/lib/time'
-import { requireAuth, getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { requireAuth, getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 import { dispatchSms } from '@/lib/sms/sms.dispatcher'
 import { SmsEvent } from '@/lib/sms/sms.events'
 import { auditLog } from '@/lib/audit/audit.logger'
@@ -294,7 +294,7 @@ export async function createSubscription(
   }
   
   let subscriptionId: string
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const subscription = await tx.subscription.create({
@@ -310,7 +310,7 @@ export async function createSubscription(
         startDate,
         endDate: endDate || null,
         isActive: true,
-        ...(tenantId ? { tenantId } : {}),
+        tenantId,
       },
     })
     
@@ -348,7 +348,7 @@ export async function createSubscription(
           requestedEndTime: endTime,
           status: 'approved',
           subscriptionId: subscription.id,
-          ...(tenantId ? { tenantId } : {}),
+          tenantId,
         },
       })
       
@@ -360,6 +360,7 @@ export async function createSubscription(
           startTime,
           endTime,
           status: 'blocked',
+          tenantId,
         },
       })
     }
@@ -643,7 +644,7 @@ export async function generateSubscriptionAppointments(
   const endTime = minutesToTime(endMinutes)
   
   let createdCount = 0
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const date of newDates) {
@@ -669,7 +670,7 @@ export async function generateSubscriptionAppointments(
           requestedEndTime: endTime,
           status: 'approved',
           subscriptionId: subscription.id,
-          ...(tenantId ? { tenantId } : {}),
+          tenantId,
         },
       })
       
@@ -681,6 +682,7 @@ export async function generateSubscriptionAppointments(
           startTime: subscription.startTime,
           endTime,
           status: 'blocked',
+          tenantId,
         },
       })
       

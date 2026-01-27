@@ -10,7 +10,7 @@ import { SmsEvent } from '@/lib/sms/sms.events'
 import { sendSms as sendSmsMessage } from '@/lib/sms/sms.service'
 import { getAdminPhoneSetting } from '@/lib/settings/settings-helpers'
 import { formatDateForSms } from '@/lib/time/formatDate'
-import { getTenantFilter, getTenantIdForCreate } from '@/lib/db-helpers'
+import { getTenantFilter, getCurrentTenant } from '@/lib/db-helpers'
 
 export interface WorkingHour {
   id: string
@@ -84,7 +84,7 @@ export async function updateWorkingHours(
     throw new Error('Berber bulunamadı')
   }
 
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   await prisma.workingHour.upsert({
     where: {
       barberId_dayOfWeek: {
@@ -98,7 +98,7 @@ export async function updateWorkingHours(
       startTime,
       endTime,
       isWorking,
-      ...(tenantId ? { tenantId } : {}),
+      tenantId,
     },
     update: {
       startTime,
@@ -226,7 +226,7 @@ export async function createOverride(
     }
   })
 
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   const override = await prisma.workingHourOverride.create({
     data: {
       barberId,
@@ -234,7 +234,7 @@ export async function createOverride(
       startTime,
       endTime,
       reason: finalReason,
-      ...(tenantId ? { tenantId } : {}),
+      tenantId,
     },
   })
 
@@ -362,7 +362,7 @@ export async function createOverride(
         const adminMessage = `⚠️ ${formatDateForSms(date)} ${startTime}-${endTime} saatleri kapatıldı. ${cancelledCount} randevu iptal edildi.`
         try {
           await sendSmsMessage(adminPhone, adminMessage)
-          const tenantIdForSms = await getTenantIdForCreate()
+          const { tenantId: tenantIdForSms } = await getCurrentTenant()
           await prisma.smsLog.create({
             data: {
               to: adminPhone,
@@ -371,7 +371,7 @@ export async function createOverride(
               provider: 'vatansms',
               status: 'success',
               error: null,
-              ...(tenantIdForSms ? { tenantId: tenantIdForSms } : {}),
+              tenantId: tenantIdForSms,
             },
           })
         } catch (error) {
@@ -414,6 +414,7 @@ export async function sendSmsForOverride(
 
   const finalReason = override.reason || 'İşletme tarafından kapatılan saatler'
 
+  const tenantFilter = await getTenantFilter()
   const conflictingAppointments = await prisma.appointmentRequest.findMany({
     where: {
       barberId: override.barberId,

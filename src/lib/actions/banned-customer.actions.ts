@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
-import { getTenantFilter, getTenantIdForCreate } from "@/lib/db-helpers"
+import { getTenantFilter, getCurrentTenant } from "@/lib/db-helpers"
 
 export interface BannedCustomerWithStats {
   id: string
@@ -90,7 +90,7 @@ export async function banCustomer(data: {
     })
   }
 
-  const tenantId = await getTenantIdForCreate()
+  const { tenantId } = await getCurrentTenant()
   await prisma.bannedCustomer.create({
     data: {
       customerPhone: normalizedPhone,
@@ -99,7 +99,7 @@ export async function banCustomer(data: {
       banType,
       bannedUntil: banType === 'temporary' ? bannedUntil : null,
       isActive: true,
-      ...(tenantId ? { tenantId } : {}),
+      tenantId,
     },
   })
 

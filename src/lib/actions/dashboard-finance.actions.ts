@@ -53,9 +53,6 @@ export async function getFinanceSummary(
       lte: dateEnd,
     }
   }
-  if (session.role === 'barber') {
-    ledgerWhere.barberId = session.userId
-  }
 
   const expenseWhere: Prisma.ExpenseWhereInput = {
     ...tenantFilter,
@@ -128,9 +125,6 @@ export async function getFinanceChartData(
     const ledgerWhere: Prisma.LedgerEntryWhereInput = {
       date: dateStr,
       ...tenantFilter,
-    }
-    if (session.role === 'barber') {
-      ledgerWhere.barberId = session.userId
     }
 
     const expenseWhere: Prisma.ExpenseWhereInput = {
